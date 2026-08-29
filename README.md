@@ -14,7 +14,8 @@ runbooks, troubleshooting guides, policies, API docs, onboarding, FAQs) and gene
 company-specific questions. If retrieved documentation is insufficient, it must say so rather
 than hallucinate.
 
-Target timeline: ~3-5 days of implementation, with an optional AWS deployment phase afterward.
+Scoped as a small, incremental build: get the core ingest -> retrieve -> answer -> cite loop
+working locally first, then evaluate it, then treat AWS deployment as an optional later phase.
 
 ## Goals
 
@@ -28,7 +29,9 @@ Learn and demonstrate, hands-on:
 - Basic observability (structured logging, LangSmith traces)
 - Docker Compose for local dev; AWS CDK for optional deployment
 
-Full detail lives in `ARCHITECTURE.md`. Agent roles and how work gets done live in `AGENTS.md`.
+Full detail lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Coding conventions live in
+[`docs/CODING-GUIDELINES.md`](docs/CODING-GUIDELINES.md). Agent/contributor roles and process
+live in [`AGENTS.md`](AGENTS.md).
 
 ## Non-Goals
 
@@ -64,5 +67,6 @@ against a baseline.
 
 ## Status
 
-Project initialization only. No application code yet - see `ARCHITECTURE.md` for the proposed
-system design (pending approval) and `AGENTS.md` for how work will be planned and executed.
+Project initialization only. No application code yet - see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+for the proposed system design (pending approval) and [`AGENTS.md`](AGENTS.md) for how work will
+be planned and executed.

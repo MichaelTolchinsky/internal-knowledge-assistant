@@ -177,7 +177,7 @@ infrastructure until an optional deployment phase is explicitly greenlit.
 15. Optional AWS deployment (CDK)
 ```
 
-Each step is followed by a Learning Gate (see `AGENTS.md`) before the next one starts.
+Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) before the next one starts.
 
 ## 11. Open Decisions (to resolve at the relevant implementation step, not now)
 

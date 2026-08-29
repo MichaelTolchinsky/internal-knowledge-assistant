@@ -2,7 +2,8 @@
 
 Concrete engineering conventions for this repo. Scope: keep it simple, favor clear separation of
 concerns and typed abstractions at every external boundary, and don't import enterprise-scale
-machinery this project doesn't need. See `ARCHITECTURE.md` for system design and `AGENTS.md` for
+machinery this project doesn't need. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for system design
+and [`../AGENTS.md`](../AGENTS.md) for
 process/roles.
 
 ## 1. Project Layout
@@ -158,7 +159,7 @@ ID, prompt template path/version. This is what makes the evaluation experiment w
 ## 9. Commits / PRs
 
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `refactor:`).
-- Small, focused commits per development-progression step (see `ARCHITECTURE.md` section 10).
+- Small, focused commits per development-progression step (see [`ARCHITECTURE.md`](ARCHITECTURE.md) section 10).
 - PR/commit description states: what changed, how it was tested, any new/changed env vars or
   config.
 

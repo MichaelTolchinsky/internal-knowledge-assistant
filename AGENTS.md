@@ -1,60 +1,41 @@
 # AGENTS.md
 
 How work on this project gets planned, executed, taught, and reviewed. This file is the source
-of truth for process; it does not describe application architecture (see `ARCHITECTURE.md`) or
-coding conventions (see `CODING-GUIDELINES.md`). The Execution Agent must follow
-`CODING-GUIDELINES.md` for every implementation task.
+of truth for process; it does not describe application architecture (see
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) or coding conventions (see
+[`docs/CODING-GUIDELINES.md`](docs/CODING-GUIDELINES.md)). Anyone implementing a task - human or
+AI agent - should follow `docs/CODING-GUIDELINES.md`.
 
-## Session Roles
+This file defines **roles and gates**, not a specific tool's mechanics. Whatever agent, IDE, or
+workflow you use to actually write code should be able to follow this process.
 
-**This chat session is the Coordinator.** It is the only session the developer interacts with
-directly. The Coordinator:
+## Roles
 
-- Owns markdown documentation, project planning, task breakdown, folder structure, progress
-  tracking, and delegation.
-- Does **not** implement application code itself.
-- Delegates execution to a separate agent running in a Herdr pane (see below), and supervises it.
+- **Coordinator** - owns markdown documentation, project planning, task breakdown, folder
+  structure, and progress tracking. Does not implement application code.
+- **Execution** - implements a specific, approved task: writes production code, runs relevant
+  tests, reports back the decisions made. Does not make major architectural calls unilaterally -
+  surfaces them as a decision record (see below) instead.
+- **Test** - unit tests, integration tests, edge cases, regression tests, evaluation
+  infrastructure. Can be the same actor as Execution for a small task.
+- **Teacher** - see the Learning Gate below. A distinct responsibility even when carried out by
+  whoever is coordinating the work.
+- **Reviewer** - challenges architecture, correctness, AI-specific design (grounding, citations,
+  abstention), security, cost, latency, and evaluation quality. Should push back, not
+  rubber-stamp.
 
-All other agent roles below run as sub-agents/executors, dispatched via Herdr panes, not as
-separate chats the developer talks to directly.
+These roles can map onto separate sessions/agents, separate PR reviewers, or just separate
+mental modes for a single contributor - the process is the same either way.
 
-## Delegation Model (Herdr)
+## Workflow Shape
 
-This project uses the `herdr-ticket-workflow` skill for ticket-driven execution:
-
-1. Coordinator analyzes a ticket/task and produces an execution plan + AC checklist.
-2. **Hard approval gate** - the developer must explicitly approve the plan before execution starts.
-3. Coordinator opens a sibling Herdr pane and hands the whole approved job to an executor agent
-   in one prompt (with **ponytail** / lazy-senior-dev mode active: reuse-first, no unrequested
-   abstractions, smallest correct diff).
-4. Coordinator supervises via `herdr agent wait` / `herdr agent read` - it does not drive
-   implementation step-by-step, and it does not edit code directly.
-5. On completion, a fan-out validation pass runs (unit tests, lint, ponytail-style code review),
-   read-only, scoped to the diff. Failures go through a single controlled fix-pass agent, then
-   re-validation.
-
-For freeform/exploratory work with no ticket in scope (e.g. this initial project-doc setup), the
-Coordinator handles it directly instead of forcing the ticket workflow - see that skill's
-"Non-trigger" section.
-
-Full mechanics live in the `herdr-ticket-workflow` skill; this file only records the roles and
-project-specific rules layered on top of it.
-
-## Agent Roles (conceptual, mapped onto the delegation model above)
-
-- **Coordinator** - this session. Docs, planning, task breakdown, delegation, progress tracking.
-  Never writes application code.
-- **Execution Agent** - the Herdr-delegated executor. Implements specific tasks, writes
-  production code, runs relevant tests, reports decisions. Does not make major architectural
-  calls without surfacing them back to the Coordinator for a decision/approval.
-- **Test Agent** - unit tests, integration tests, edge cases, regression tests, evaluation
-  infrastructure. Typically folded into the Execution Agent's scope or a dedicated validation
-  pane during Stage 4.
-- **Teacher Agent** - see Learning Gate below. Distinct responsibility even when carried out by
-  the Coordinator in-chat.
-- **Reviewer Agent** - challenges architecture, correctness, AI-specific design, security, cost,
-  latency, scalability, and evaluation quality. Corresponds to the read-only code-review step in
-  Stage 4 validation. Should push back, not rubber-stamp.
+1. Analyze the task and produce a short execution plan plus an acceptance-criteria checklist.
+2. Get explicit approval on the plan before writing code for anything non-trivial.
+3. Implement against the approved plan; keep diffs scoped to it. Escalate rather than guess on
+   ambiguous requirements or anything outside the plan's stated scope.
+4. Validate with evidence - a passing scoped test run, not just "the edit looks right" - before
+   marking an acceptance criterion done.
+5. Review (tests, lint, and a focused code review pass) before merging.
 
 ## Mandatory Learning Gate
 
@@ -64,20 +45,20 @@ but must not replace the developer's understanding.
 After every major implementation step, before starting the next one:
 
 1. Explain the concept behind what was just implemented.
-2. Ask the developer questions about it (Socratic, not just "did you get it?").
-3. Ask the developer to explain the implementation in their own words.
+2. Ask questions about it (Socratic, not just "did you get it?").
+3. Ask for the implementation to be explained back in plain language.
 4. Challenge important assumptions and tradeoffs.
-5. Identify anything the developer does not understand.
-6. Only then allow the next major step to begin.
+5. Identify anything that isn't understood yet.
+6. Only then move on to the next major step.
 
-The developer should be able to explain, for each major component: what it does, why it exists,
-how it works, what alternatives exist, why the chosen approach was picked, and what its
-limitations are. If they can't, the step is not complete - regardless of whether the code works.
+For each major component, be able to explain: what it does, why it exists, how it works, what
+alternatives exist, why the chosen approach was picked, and what its limitations are. If not,
+the step isn't complete - regardless of whether the code works.
 
 Prefer this loop over passively explaining and moving on:
 
 ```
-Question -> Developer answer -> Correction/explanation -> Follow-up question -> Developer explanation
+Question -> Answer -> Correction/explanation -> Follow-up question -> Explanation
 ```
 
 Optimize for `Understanding x Practical Experience x Retention`, not lines of code per day.
@@ -95,14 +76,15 @@ Chosen approach
 Reason
 ```
 
-These live alongside the relevant code/docs (or in `ARCHITECTURE.md` for system-level choices).
+These live alongside the relevant code/docs, or in `docs/ARCHITECTURE.md` for system-level
+choices.
 
 ## Development Order
 
-Work incrementally; do not implement the entire system in one step. See `ARCHITECTURE.md` for
-the full 15-step progression (skeleton -> DB -> data model -> chunking -> embeddings -> retrieval
--> LLM -> citations -> API -> tests -> eval dataset -> eval runner -> observability -> seed
-service -> optional AWS deployment).
+Work incrementally; do not implement the entire system in one step. See
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full progression (skeleton -> DB -> data
+model -> chunking -> embeddings -> retrieval -> LLM -> citations -> API -> tests -> eval dataset
+-> eval runner -> observability -> seed service -> optional AWS deployment).
 
 ## Non-Goals (do not implement unless explicitly requested)
 
