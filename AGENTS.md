@@ -1,7 +1,9 @@
 # AGENTS.md
 
 How work on this project gets planned, executed, taught, and reviewed. This file is the source
-of truth for process; it does not describe application architecture (see `ARCHITECTURE.md`).
+of truth for process; it does not describe application architecture (see `ARCHITECTURE.md`) or
+coding conventions (see `CODING-GUIDELINES.md`). The Execution Agent must follow
+`CODING-GUIDELINES.md` for every implementation task.
 
 ## Session Roles
 
