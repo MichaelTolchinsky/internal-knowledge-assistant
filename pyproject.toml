@@ -1,0 +1,32 @@
+[project]
+name = "knowledge-assistant"
+version = "0.1.0"
+description = "Internal Knowledge Assistant - a small RAG system for learning AI engineering concepts."
+requires-python = ">=3.14"
+readme = "README.md"
+
+# Dependencies are declared here as project structure/config lands; none pinned yet -
+# populated as each implementation step (FastAPI, SQLAlchemy, pgvector, etc.) actually happens.
+dependencies = []
+
+[dependency-groups]
+dev = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/knowledge_assistant"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "unit: deterministic, no external services",
+    "integration: requires local Postgres/pgvector",
+    "evaluation: runs the eval dataset against the real pipeline",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"

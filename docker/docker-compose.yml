@@ -1,0 +1,3 @@
+# Placeholder. Per docs/CODING-GUIDELINES.md section 10 and docs/ARCHITECTURE.md section 10
+# (Step 2): local dev stack will be just `app` + `postgres` (pgvector-enabled image).
+# Left empty until that step; not a working compose file yet.
