@@ -20,6 +20,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+    env_file: ../.env
     environment:
       DATABASE_URL: postgresql+psycopg://knowledge_assistant:knowledge_assistant@postgres:5432/knowledge_assistant
     ports:

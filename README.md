@@ -70,6 +70,7 @@ against a baseline.
 Requires Python 3.14+ and Docker.
 
 ```bash
+cp .env.example .env
 python3.14 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]" 2>/dev/null || { pip install -e .; pip install pytest pytest-asyncio pytest-timeout httpx ruff pre-commit alembic; }
 

@@ -5,6 +5,7 @@ at call sites, so the evaluation experiment workflow (change one variable, re-ru
 practical.
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,29 +13,37 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # Database
-    database_url: str = "postgresql+psycopg://knowledge_assistant:knowledge_assistant@localhost:5432/knowledge_assistant"
+    database_url: str
 
     # Embeddings
     # Decision (docs/ARCHITECTURE.md, Open Decisions): sentence-transformers/all-MiniLM-L6-v2 -
     # small, fast, CPU-friendly, well-established default for local embedding inference. Changing
     # this requires a migration (vector column dimension) and re-embedding existing chunks.
-    embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
-    embedding_dimension: int = 384
+    embedding_model_name: str
+    embedding_dimension: int
 
     # Chunking
-    chunk_size: int = 800
-    chunk_overlap: int = 100
+    chunk_size: int
+    chunk_overlap: int
 
     # Retrieval
-    top_k: int = 5
-    similarity_threshold: float | None = None
+    top_k: int
+    similarity_threshold: float | None
 
     # LLM (Bedrock)
-    bedrock_model_id: str = "anthropic.claude-3-haiku-20240307-v1:0"
-    bedrock_region: str = "us-east-1"
+    bedrock_model_id: str
+    bedrock_region: str
 
     # Prompts
-    prompt_template_version: str = "v1"
+    prompt_template_version: str
+
+    # pydantic-settings does not coerce an empty .env string to None for Optional[float] fields
+    # (it tries to parse "" as a float and fails). SIMILARITY_THRESHOLD= must still resolve to
+    # None, so normalize the empty string before type validation runs.
+    @field_validator("similarity_threshold", mode="before")
+    @classmethod
+    def _empty_string_to_none(cls, value: object) -> object:
+        return None if value == "" else value
 
 
 settings = Settings()
