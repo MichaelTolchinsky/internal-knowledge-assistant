@@ -30,30 +30,42 @@ behind a narrow interface (see [`CODING-GUIDELINES.md`](CODING-GUIDELINES.md) fo
 ```mermaid
 flowchart TD
     Client([Client]) -->|"POST /query"| API[FastAPI]
-    API --> RAGService[RAG Service<br/>orchestrator]
+    API -->|question| RAGService[RAG Service<br/>orchestrator]
+    RAGService -->|answer + citations| API
+    API -->|answer + citations| Client
 
     subgraph QueryTime["Query-time domains"]
+        direction TB
         RAGService --> Embedder[Embedding Model]
-        RAGService --> Retriever
+        Embedder -->|query embedding| Retriever
+        Retriever -->|top-K chunks| RAGService
         RAGService --> PromptService[Prompt Service]
-        RAGService --> LLMClient[LLM Client]
-        Embedder -.->|query embedding| Retriever
-        PromptService -->|constructed prompt| LLMClient
+        PromptService -->|constructed prompt| LLMClient[LLM Client]
+        LLMClient -->|answer| RAGService
     end
 
-    Retriever --> PGVector[(PostgreSQL + pgvector)]
+    Retriever --> PGVector[(PostgreSQL<br/>+ pgvector)]
     LLMClient --> Bedrock[AWS Bedrock]
-    RAGService -->|answer + citations| API
+
+    API -.->|"optional ingestion trigger<br/>(admin/seed)"| Parser
 
     subgraph Ingestion["Ingestion pipeline (offline/batch, separate path)"]
+        direction TB
         Parser[Document Parser] --> Chunker
         Chunker --> IngestEmbedder[Embedding Model]
-        IngestEmbedder --> PGVector
     end
+
+    IngestEmbedder --> PGVector
 ```
 
 Notes on the diagram:
 
+- Arrows now show the full call/response shape, not just fan-out: the Retriever returns top-K
+  chunks to the RAG Service, the LLM Client returns the answer to the RAG Service, which returns
+  it to FastAPI and then the client.
+- **FastAPI can also trigger ingestion** (dashed edge) through an optional admin/seed endpoint -
+  the primary, always-present ingestion path is still the offline `seed`/CLI command (section 17
+  of the handoff spec), but nothing stops FastAPI from exposing a thin trigger for it later.
 - **Embedding Model** is used by both paths (query-time and ingestion) - it must be the same
   implementation/model for both, so query and document vectors are comparable.
 - **Retriever**, **Prompt Service**, and **LLM Client** are each defined as a `Protocol`, so any
