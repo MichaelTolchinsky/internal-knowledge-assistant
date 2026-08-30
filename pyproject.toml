@@ -5,12 +5,29 @@ description = "Internal Knowledge Assistant - a small RAG system for learning AI
 requires-python = ">=3.14"
 readme = "README.md"
 
-# Dependencies are declared here as project structure/config lands; none pinned yet -
-# populated as each implementation step (FastAPI, SQLAlchemy, pgvector, etc.) actually happens.
-dependencies = []
+# Dependencies needed for this step: FastAPI app skeleton, SQLAlchemy 2.x + pgvector data
+# model, Alembic migrations, settings. More are added as later implementation steps land
+# (sentence-transformers, boto3/Bedrock, etc.).
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "pgvector>=0.3.6",
+    "psycopg[binary]>=3.2",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "alembic>=1.13",
+]
 
 [dependency-groups]
-dev = []
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-timeout>=2.3",
+    "httpx>=0.27",
+    "ruff>=0.7",
+    "pre-commit>=4.0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -21,11 +38,13 @@ packages = ["src/knowledge_assistant"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 markers = [
     "unit: deterministic, no external services",
     "integration: requires local Postgres/pgvector",
     "evaluation: runs the eval dataset against the real pipeline",
 ]
+timeout = 60
 
 [tool.ruff]
 line-length = 100

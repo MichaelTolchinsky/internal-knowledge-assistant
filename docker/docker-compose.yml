@@ -1,3 +1,32 @@
-# Placeholder. Per docs/CODING-GUIDELINES.md section 10 and docs/ARCHITECTURE.md section 10
-# (Step 2): local dev stack will be just `app` + `postgres` (pgvector-enabled image).
-# Left empty until that step; not a working compose file yet.
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: knowledge_assistant
+      POSTGRES_PASSWORD: knowledge_assistant
+      POSTGRES_DB: knowledge_assistant
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U knowledge_assistant -d knowledge_assistant"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://knowledge_assistant:knowledge_assistant@postgres:5432/knowledge_assistant
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

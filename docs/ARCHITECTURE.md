@@ -125,7 +125,7 @@ flowchart LR
     Decide -->|evidence-based| Base
 ```
 
-## 4. Data Model (conceptual, initial)
+## 4. Data Model (implemented in Step 3 - `src/knowledge_assistant/storage/models.py`)
 
 ```
 Document
@@ -133,7 +133,7 @@ Document
 id
 name
 source
-content_hash
+content_hash      (unique)
 metadata
 created_at
 updated_at
@@ -141,16 +141,17 @@ updated_at
 DocumentChunk
 -------------
 id
-document_id (FK -> Document)
+document_id (FK -> Document, ON DELETE CASCADE)
 chunk_index
 content
-embedding        (pgvector column; dimension tied to chosen embedding model)
+embedding         vector(384) - HNSW index, vector_cosine_ops (see Open Decisions)
 metadata
 created_at
+                  UNIQUE (document_id, chunk_index)
 ```
 
-Exact column types, indexes (e.g. HNSW/IVFFlat on `embedding`), and constraints to be finalized
-during the data-model implementation step.
+Migrations are managed with Alembic (`migrations/`); see `docker/init-db/001-enable-pgvector.sql`
+for the extension bootstrap that must run before the first migration.
 
 ## 5. Configurable Parameters
 
@@ -198,9 +199,9 @@ infrastructure until an optional deployment phase is explicitly greenlit.
 
 ## 10. Development Progression
 
-- [ ] 1. Project skeleton
-- [ ] 2. PostgreSQL + pgvector (Docker Compose)
-- [ ] 3. Document/chunk data model
+- [x] 1. Project skeleton
+- [x] 2. PostgreSQL + pgvector (Docker Compose)
+- [x] 3. Document/chunk data model
 - [ ] 4. Document parsing & chunking
 - [ ] 5. Embeddings
 - [ ] 6. Vector retrieval
@@ -219,10 +220,14 @@ Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) be
 
 ## 11. Open Decisions (to resolve at the relevant implementation step, not now)
 
-- Specific embedding model + vector dimension.
+- ~~Specific embedding model + vector dimension.~~ **Resolved (Step 3):**
+  `sentence-transformers/all-MiniLM-L6-v2`, 384 dimensions, cosine distance (HNSW index,
+  `vector_cosine_ops`). Chosen for fast CPU inference and small footprint, appropriate for a
+  local learning project; revisit during the embeddings/evaluation steps if quality is
+  insufficient. Changing it later requires an Alembic migration (vector column dimension) and
+  re-embedding all existing chunks.
 - Initial chunk size/overlap and the reasoning for it.
 - Initial top-K and threshold.
-- pgvector index type (HNSW vs IVFFlat) and distance metric (cosine vs L2 vs inner product).
 - Prompt template for grounded, citation-aware, abstention-capable answers - and how the Prompt
   Service versions/tracks which template produced a given eval run.
 - Evaluation dataset format and scoring method for "answer correctness" and "groundedness".

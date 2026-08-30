@@ -65,8 +65,27 @@ against a baseline.
 - The app runs locally via Docker Compose, with a repeatable seed process.
 - AWS deployment is optional and can be added afterward.
 
+## Local Development
+
+Requires Python 3.14+ and Docker.
+
+```bash
+python3.14 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]" 2>/dev/null || { pip install -e .; pip install pytest pytest-asyncio pytest-timeout httpx ruff pre-commit alembic; }
+
+cd docker && docker compose up -d postgres && cd ..
+alembic upgrade head
+
+pytest tests/
+```
+
+Run the full stack (app + postgres) with `docker compose up` from `docker/`.
+
 ## Status
 
-Project initialization only. No application code yet - see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-for the proposed system design (pending approval) and [`AGENTS.md`](AGENTS.md) for how work will
-be planned and executed.
+Skeleton, local Postgres/pgvector setup, and the initial Document/DocumentChunk data model are
+in place (Steps 1-3 of the development progression in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#10-development-progression)). No RAG logic
+(chunking, embeddings, retrieval, prompts, LLM, API) yet - see
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the system design and
+[`AGENTS.md`](AGENTS.md) for how work is planned and executed.
