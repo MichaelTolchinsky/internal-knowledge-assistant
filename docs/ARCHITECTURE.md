@@ -14,45 +14,69 @@ been written yet.
 | API framework | FastAPI + Pydantic | Flask, Django | Async-friendly, typed request/response models, fast to iterate. |
 | ORM | SQLAlchemy 2.x | raw SQL, Django ORM | Typed models, migrations story, works naturally with pgvector's SQLAlchemy integration. |
 | Retrieval | Vector similarity search only | Hybrid (keyword + vector) | Hybrid adds complexity; only add later if evaluation shows a concrete gap. |
-| Local dev | Docker Compose (FastAPI + Postgres/pgvector) | LocalStack for AWS emulation | LocalStack only added if a specific AWS integration needs it - not by default. |
-| Observability | Structured logging + LangSmith | Custom observability platform | LangSmith covers LLM/RAG tracing; no need to build our own. |
+| Prompt management | Dedicated `prompts/` module, separate from `llm/` | Inline f-strings in the LLM client, a prompt-management SaaS | Prompt templates are a distinct concern from LLM transport - versioning, variable injection, and safety wrapping (isolating untrusted retrieved text) need their own tested module so prompt changes can be evaluated like any other RAG variable. No external service needed at this scale. |
+| Local dev / AWS emulation | [Floci](https://floci.io) (only if/when an AWS integration needs local emulation) | LocalStack | Floci is a free, open-source (MIT), drop-in-compatible local AWS emulator (same port/API surface as LocalStack) with a much lighter footprint. Still only added when a specific AWS integration genuinely needs it - not by default. |
+| Observability | Structured logging + LangSmith (free Developer tier) | Custom observability platform, Langfuse | LangSmith's free tier (1 seat, 5,000 traces/month, 14-day retention) comfortably covers a solo learning project with a 20-30 question eval set. If that cap is ever hit, [Langfuse](https://langfuse.com) is a fully open-source, self-hostable free alternative with no trace cap - swap-in candidate behind the same tracing calls. No paid observability tooling required either way. |
 | IaC | AWS CDK (Python) | Terraform, CloudFormation | Python-native, matches app language, optional/deferred until local system works. |
 
 ## 2. High-Level Architecture
 
-```
-Client
-  |
-  v
-FastAPI
-  |
-  v
-RAG Service
-  |-- Retriever --> PostgreSQL + pgvector
-  |
-  |-- LLM (abstraction) --> AWS Bedrock
+The RAG service is not one monolithic component - each responsibility is its own module/domain
+behind a narrow interface (see [`CODING-GUIDELINES.md`](CODING-GUIDELINES.md) for the
+`Protocol`-based abstractions): **Parser**, **Chunker**, **Embedding Model**, **Retriever**,
+**Prompt Service**, and **LLM Client** are separate, independently testable domains. A thin
+**RAG Service** module orchestrates them; it contains no HTTP, SQL, or SDK code itself.
 
-Document Ingestion (separate path)
-  |
-  v
-Document Parser -> Chunker -> Embedding Generator -> PostgreSQL + pgvector
+```mermaid
+flowchart TD
+    Client([Client]) -->|"POST /query"| API[FastAPI]
+    API --> RAGService[RAG Service<br/>orchestrator]
+
+    subgraph QueryTime["Query-time domains"]
+        RAGService --> Embedder[Embedding Model]
+        RAGService --> Retriever
+        RAGService --> PromptService[Prompt Service]
+        RAGService --> LLMClient[LLM Client]
+        Embedder -.->|query embedding| Retriever
+        PromptService -->|constructed prompt| LLMClient
+    end
+
+    Retriever --> PGVector[(PostgreSQL + pgvector)]
+    LLMClient --> Bedrock[AWS Bedrock]
+    RAGService -->|answer + citations| API
+
+    subgraph Ingestion["Ingestion pipeline (offline/batch, separate path)"]
+        Parser[Document Parser] --> Chunker
+        Chunker --> IngestEmbedder[Embedding Model]
+        IngestEmbedder --> PGVector
+    end
 ```
 
-Exact module boundaries are decided during implementation, but ingestion and query-time paths
-are kept separate: ingestion is a batch/offline concern (seed later), query answering is the
-online request path.
+Notes on the diagram:
+
+- **Embedding Model** is used by both paths (query-time and ingestion) - it must be the same
+  implementation/model for both, so query and document vectors are comparable.
+- **Retriever**, **Prompt Service**, and **LLM Client** are each defined as a `Protocol`, so any
+  of them can be swapped (different vector store, different prompt template, different model)
+  without touching the RAG Service orchestrator.
+- Ingestion and query-answering are kept as separate paths: ingestion is a batch/offline concern
+  (seed later), query answering is the online request path.
+
+Exact module boundaries may be refined during implementation, but this domain split (parser /
+chunker / embeddings / retriever / prompt service / LLM client) is the starting design, not an
+open question.
 
 ## 3. Core System Flows
 
 ### 3.1 Ingestion Flow
 
-```
-Load document (md / txt / pdf)
-  -> Extract text
-  -> Create document metadata (name, source, content_hash, metadata)
-  -> Split into chunks (configurable size/overlap)
-  -> Generate embeddings (local HF model)
-  -> Persist document + chunks + embeddings (Postgres/pgvector)
+```mermaid
+flowchart LR
+    A[Load document<br/>md / txt / pdf] --> B[Extract text]
+    B --> C[Create document metadata<br/>name, source, content_hash, metadata]
+    C --> D[Split into chunks<br/>configurable size/overlap]
+    D --> E[Generate embeddings<br/>local HF model]
+    E --> F[(Persist document + chunks<br/>+ embeddings in Postgres/pgvector)]
 ```
 
 Repeatable/idempotent: re-running ingestion on the same content should not duplicate data
@@ -60,30 +84,33 @@ Repeatable/idempotent: re-running ingestion on the same content should not dupli
 
 ### 3.2 Query Flow (RAG pipeline)
 
-```
-User question
-  -> Question embedding (same model as documents)
-  -> Vector search (pgvector similarity, top-K)
-  -> Top-K chunks (+ optional distance/similarity threshold)
-  -> Context construction (assemble prompt from chunks + citations metadata)
-  -> LLM call (Bedrock, via abstraction)
-  -> Answer
-  -> Citations (document/chunk IDs mapped back to retrieved context)
-  -> If context is insufficient -> explicit abstention, not a guess
+```mermaid
+flowchart LR
+    Q[User question] --> E[Question embedding<br/>same model as documents]
+    E --> V[Vector search<br/>pgvector similarity, top-K]
+    V --> T[Top-K chunks<br/>+ optional distance/similarity threshold]
+    T --> C[Context construction<br/>Prompt Service assembles chunks + citation metadata]
+    C --> L[LLM call<br/>Bedrock, via LLM Client abstraction]
+    L --> A[Answer]
+    A --> CI[Citations<br/>document/chunk IDs mapped to retrieved context]
+    T -->|insufficient context| AB[Explicit abstention, not a guess]
 ```
 
 Every stage must be independently inspectable (no single framework call hiding the whole
-pipeline) - this is a stated learning objective, not an implementation nicety.
+pipeline) - this is a stated learning objective, not an implementation nicety. Note that context
+construction is owned by the **Prompt Service** (template + variable injection + safety wrapping
+of untrusted retrieved text), not inlined into the LLM Client.
 
 ### 3.3 Evaluation Flow
 
-```
-Baseline run over versioned eval dataset (20-30 Q/A pairs)
-  -> Record: answer correctness, Recall@K, groundedness, abstention accuracy, latency, cost
-  -> Change one variable (chunk size / overlap / top-K / threshold / prompt / embedding model)
-  -> Re-run evaluation
-  -> Compare against baseline
-  -> Keep or discard the change based on evidence
+```mermaid
+flowchart LR
+    Base[Baseline run over versioned<br/>eval dataset - 20-30 Q/A pairs] --> Rec[Record metrics:<br/>answer correctness, Recall@K,<br/>groundedness, abstention accuracy,<br/>latency, cost]
+    Rec --> Change[Change one variable:<br/>chunk size / overlap / top-K /<br/>threshold / prompt / embedding model]
+    Change --> Rerun[Re-run evaluation]
+    Rerun --> Compare[Compare against baseline]
+    Compare --> Decide{Keep or discard<br/>the change?}
+    Decide -->|evidence-based| Base
 ```
 
 ## 4. Data Model (conceptual, initial)
@@ -122,7 +149,7 @@ hardcoded:
 - Chunk size / chunk overlap
 - Top-K
 - Similarity/distance threshold
-- Prompt template
+- Prompt template (versioned - see Prompt Service in section 2)
 
 ## 6. API Surface (initial)
 
@@ -159,23 +186,22 @@ infrastructure until an optional deployment phase is explicitly greenlit.
 
 ## 10. Development Progression
 
-```
-1. Project skeleton
-2. PostgreSQL + pgvector (Docker Compose)
-3. Document/chunk data model
-4. Chunking
-5. Embeddings
-6. Vector retrieval
-7. LLM generation
-8. Citations
-9. API
-10. Tests (unit + integration)
-11. Evaluation dataset
-12. Evaluation runner
-13. Observability
-14. Seed service
-15. Optional AWS deployment (CDK)
-```
+- [ ] 1. Project skeleton
+- [ ] 2. PostgreSQL + pgvector (Docker Compose)
+- [ ] 3. Document/chunk data model
+- [ ] 4. Document parsing & chunking
+- [ ] 5. Embeddings
+- [ ] 6. Vector retrieval
+- [ ] 7. Prompt service (templates, versioning, context assembly, safety wrapping of retrieved text)
+- [ ] 8. LLM generation (Bedrock, behind the `LLMClient` abstraction)
+- [ ] 9. Citations
+- [ ] 10. API
+- [ ] 11. Tests (unit + integration)
+- [ ] 12. Evaluation dataset
+- [ ] 13. Evaluation runner
+- [ ] 14. Observability (structured logging + LangSmith)
+- [ ] 15. Seed service
+- [ ] 16. Optional AWS deployment (CDK; Floci for local AWS emulation if/when needed)
 
 Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) before the next one starts.
 
@@ -185,5 +211,6 @@ Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) be
 - Initial chunk size/overlap and the reasoning for it.
 - Initial top-K and threshold.
 - pgvector index type (HNSW vs IVFFlat) and distance metric (cosine vs L2 vs inner product).
-- Prompt template for grounded, citation-aware, abstention-capable answers.
+- Prompt template for grounded, citation-aware, abstention-capable answers - and how the Prompt
+  Service versions/tracks which template produced a given eval run.
 - Evaluation dataset format and scoring method for "answer correctness" and "groundedness".

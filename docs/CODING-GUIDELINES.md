@@ -3,8 +3,7 @@
 Concrete engineering conventions for this repo. Scope: keep it simple, favor clear separation of
 concerns and typed abstractions at every external boundary, and don't import enterprise-scale
 machinery this project doesn't need. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for system design
-and [`../AGENTS.md`](../AGENTS.md) for
-process/roles.
+and [`../AGENTS.md`](../AGENTS.md) for process/roles.
 
 ## 1. Project Layout
 
@@ -18,7 +17,8 @@ src/
     ingestion/       # parsing, chunking
     embeddings/      # EmbeddingModel protocol + HF implementation
     retrieval/       # Retriever protocol + pgvector implementation
-    llm/             # LLMClient protocol + Bedrock implementation, prompt templates
+    prompts/         # PromptBuilder protocol + templates, versioning, safety wrapping
+    llm/             # LLMClient protocol + Bedrock implementation
     storage/         # SQLAlchemy models, repositories (Document/Chunk persistence)
     evaluation/      # eval dataset loader, runner, metrics
     config.py        # settings (env-driven), one place for tunable params
@@ -41,8 +41,10 @@ Keep these concerns in distinct modules, each with a narrow interface:
 
 - **Ingestion** (parse -> chunk) is independent of **embedding generation**, which is independent
   of **persistence**. Each should be callable/testable in isolation.
-- **Retrieval** (vector search) is independent of **context construction** (prompt assembly),
-  which is independent of **LLM invocation**.
+- **Retrieval** (vector search) is independent of **prompt construction** (the Prompt Service),
+  which is independent of **LLM invocation** (the LLM Client). Prompt templates get their own
+  module (`prompts/`) rather than living inside `llm/`, because "which prompt produced this
+  answer" needs to be versioned and evaluated independently of "which model/transport was used".
 - The RAG "service" layer orchestrates these; it contains no HTTP concerns and no SQL and no
   Bedrock SDK calls itself - it composes the protocols below.
 
@@ -79,6 +81,20 @@ class Retriever(Protocol):
 ```
 
 ```python
+# prompts/protocol.py
+from typing import Protocol
+from knowledge_assistant.domain import RetrievedChunk
+
+class PromptBuilder(Protocol):
+    """Owns template + version + safety wrapping. Retrieved chunk text is untrusted content -
+    it is injected as clearly delimited data, never concatenated as instructions."""
+
+    template_version: str
+
+    def build(self, question: str, chunks: list[RetrievedChunk]) -> str: ...
+```
+
+```python
 # llm/protocol.py
 from typing import Protocol
 from knowledge_assistant.domain import LLMResponse
@@ -90,8 +106,8 @@ class LLMClient(Protocol):
 Guidelines for these protocols:
 
 - Keep the method surface minimal - only what the RAG service actually calls.
-- Concrete implementations (`HuggingFaceEmbeddingModel`, `PgVectorRetriever`,
-  `BedrockLLMClient`) live next to their protocol, in the same package.
+- Concrete implementations (`HuggingFaceEmbeddingModel`, `PgVectorRetriever`, `PromptBuilder`
+  templates, `BedrockLLMClient`) live next to their protocol, in the same package.
 - Tests get a trivial fake implementing the same `Protocol` (no mocking framework needed for
   these boundaries) - this is what makes unit tests of the RAG service possible without a real
   Postgres or Bedrock call.
@@ -167,7 +183,9 @@ ID, prompt template path/version. This is what makes the evaluation experiment w
 
 - One `Dockerfile` for the app, one `docker-compose.yml` for local dev: `app` + `postgres`
   (pgvector-enabled image) only. No Redis/Temporal/devcontainer/emulator unless a concrete AWS
-  integration later needs LocalStack.
+  integration later needs local emulation - in that case add [Floci](https://floci.io) as an
+  extra `docker-compose` service (free, open-source, drop-in-compatible LocalStack alternative),
+  not before.
 - Postgres pinned to a specific major version; pgvector extension enabled via init SQL/migration,
   not manually per environment.
 
