@@ -202,7 +202,7 @@ infrastructure until an optional deployment phase is explicitly greenlit.
 - [x] 1. Project skeleton
 - [x] 2. PostgreSQL + pgvector (Docker Compose)
 - [x] 3. Document/chunk data model
-- [ ] 4. Document parsing & chunking
+- [x] 4. Document parsing & chunking
 - [ ] 5. Embeddings
 - [ ] 6. Vector retrieval
 - [ ] 7. Prompt service (templates, versioning, context assembly, safety wrapping of retrieved text)
@@ -226,7 +226,13 @@ Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) be
   local learning project; revisit during the embeddings/evaluation steps if quality is
   insufficient. Changing it later requires an Alembic migration (vector column dimension) and
   re-embedding all existing chunks.
-- Initial chunk size/overlap and the reasoning for it.
+- ~~Initial chunk size/overlap and the reasoning for it.~~ **Resolved (Step 4):** character-based
+  (not token-based) chunking, hand-rolled paragraph -> sentence -> word recursive splitting -
+  no tokenizer dependency yet, keeps the pipeline simple/understandable per the project's
+  learning goal. Defaults (`chunk_size=800`, `chunk_overlap=100`, in `.env.example`) are a
+  starting point to be tuned via the evaluation experiment workflow, not a final answer.
+  `RecursiveCharacterChunker` fails fast (`ValueError`) if `chunk_overlap > chunk_size // 2`, so
+  a misconfigured sweep can't silently blow up chunk count instead of erroring.
 - Initial top-K and threshold.
 - Prompt template for grounded, citation-aware, abstention-capable answers - and how the Prompt
   Service versions/tracks which template produced a given eval run.
