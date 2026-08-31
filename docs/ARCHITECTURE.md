@@ -241,8 +241,18 @@ Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) be
   the `EmbeddingModel` Protocol - but `sentence-transformers`' underlying inference is CPU-bound
   and blocking. Called directly from an `async def` FastAPI handler, it will block the event
   loop for the full inference duration, stalling every other concurrent request. Whoever wires
-  this into the RAG service orchestrator must offload it (e.g. `asyncio.to_thread`) rather than
+  this into the RAG service orchestrator must offload it via `asyncio.to_thread` rather than
   `await`-ing it inline - do not call `embed()` directly from an async request handler.
+
+  **Decision: `asyncio.to_thread`, not `ProcessPoolExecutor`.** Generic CPU-bound Python work is
+  usually pointed at `ProcessPoolExecutor` instead of threads, since the GIL prevents real
+  thread parallelism for pure-Python work. But PyTorch (like NumPy) releases the GIL during its
+  C++/tensor computation, so `asyncio.to_thread`-offloaded `embed()` calls do get genuine
+  cross-core concurrency, not full serialization - `to_thread` isn't just "the lazy option"
+  here. `ProcessPoolExecutor` would additionally require each worker process to hold its own
+  loaded copy of the model in memory (adds real complexity/RAM cost) to solve a scaling problem
+  this single-developer local learning project doesn't have. Revisit only if evaluation/load
+  testing ever shows event-loop contention under real concurrent load.
 - **Open TODO from Step 5 review:** no composition-root/singleton guard yet ensures the same
   `HuggingFaceEmbeddingModel` instance is reused for both query-time and ingestion-time
   embedding (required so document/query vectors stay comparable - see Step 1-3 Learning Gate).
