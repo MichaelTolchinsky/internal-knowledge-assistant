@@ -204,7 +204,7 @@ infrastructure until an optional deployment phase is explicitly greenlit.
 - [x] 3. Document/chunk data model
 - [x] 4. Document parsing & chunking
 - [x] 5. Embeddings
-- [ ] 6. Vector retrieval
+- [x] 6. Vector retrieval
 - [ ] 7. Prompt service (templates, versioning, context assembly, safety wrapping of retrieved text)
 - [ ] 8. LLM generation (Bedrock, behind the `LLMClient` abstraction)
 - [ ] 9. Citations
