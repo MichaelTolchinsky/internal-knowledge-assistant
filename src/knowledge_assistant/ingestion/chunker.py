@@ -1,27 +1,25 @@
 """Paragraph-aware recursive character chunker.
 
-Character-based, not token-based - a hand-rolled implementation with no tokenizer/framework
-dependency for this step (see docs/ARCHITECTURE.md Open Decisions; revisit if evaluation shows
-token-based chunking matters). Prefers to split on paragraph boundaries, falling back to
-sentence and then word boundaries only when a unit doesn't fit in one chunk on its own - a chunk
-is never split in the middle of a word.
+See ingestion/protocols.py for the Chunker Protocol this implements. Character-based, not
+token-based - a hand-rolled implementation with no tokenizer/framework dependency for this step
+(see docs/ARCHITECTURE.md Open Decisions; revisit if evaluation shows token-based chunking
+matters). Prefers to split on paragraph boundaries, falling back to sentence and then word
+boundaries only when a unit doesn't fit in one chunk on its own - a chunk is never split in the
+middle of a word.
 """
 
 from __future__ import annotations
 
 import re
-from typing import Protocol
+
+from knowledge_assistant.ingestion.protocols import Chunker
 
 _PARAGRAPH_RE = re.compile(r"\n\s*\n")
 _SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
 _WORD_RE = re.compile(r"\s+")
 
 
-class Chunker(Protocol):
-    def chunk(self, text: str) -> list[str]: ...
-
-
-class RecursiveCharacterChunker:
+class RecursiveCharacterChunker(Chunker):
     """Packs text into ~chunk_size-character windows with chunk_overlap characters shared
     between consecutive chunks."""
 

@@ -14,7 +14,7 @@ src/
   knowledge_assistant/
     api/            # FastAPI routers + Pydantic request/response models
     domain/         # core types: Document, DocumentChunk, RetrievedChunk, Answer, Citation
-    ingestion/       # parsing, chunking
+    ingestion/       # protocols.py (DocumentParser, Chunker) + parser.py, chunker.py
     embeddings/      # EmbeddingModel protocol + HF implementation
     retrieval/       # Retriever protocol + pgvector implementation
     prompts/         # PromptBuilder protocol + templates, versioning, safety wrapping
@@ -108,6 +108,11 @@ Guidelines for these protocols:
 - Keep the method surface minimal - only what the RAG service actually calls.
 - Concrete implementations (`HuggingFaceEmbeddingModel`, `PgVectorRetriever`, `PromptBuilder`
   templates, `BedrockLLMClient`) live next to their protocol, in the same package.
+- Concrete implementations must explicitly subclass their `Protocol` (e.g.
+  `class HuggingFaceEmbeddingModel(EmbeddingModel):`), not just satisfy it structurally - this
+  makes the boundary explicit in the class definition itself, not only via duck typing.
+  Subclassing a `typing.Protocol` this way is plain PEP 544 support - no `@runtime_checkable`
+  needed, and it doesn't change duck-typing behavior anywhere else.
 - Tests get a trivial fake implementing the same `Protocol` (no mocking framework needed for
   these boundaries) - this is what makes unit tests of the RAG service possible without a real
   Postgres or Bedrock call.

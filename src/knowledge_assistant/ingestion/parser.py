@@ -1,8 +1,8 @@
-"""Document parsers: raw source file -> ParsedDocument (normalized plain text + content hash).
+"""Concrete document parsers: raw source file -> ParsedDocument (normalized plain text +
+content hash). See ingestion/protocols.py for the DocumentParser Protocol these implement.
 
-Per docs/CODING-GUIDELINES.md section 3: the parser boundary is a `Protocol`, not an ABC, so
-alternate formats/implementations plug in without inheritance coupling. Dispatch is by file
-extension - a small dict lookup, not a plugin registry (no framework needed for three formats).
+Dispatch is by file extension - a small dict lookup, not a plugin registry (no framework needed
+for three formats).
 """
 
 from __future__ import annotations
@@ -10,11 +10,11 @@ from __future__ import annotations
 import hashlib
 import re
 from pathlib import Path
-from typing import Protocol
 
 from pypdf import PdfReader
 
 from knowledge_assistant.domain import ParsedDocument
+from knowledge_assistant.ingestion.protocols import DocumentParser
 
 _FRONTMATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n", re.DOTALL)
 _BLANK_LINES_RE = re.compile(r"\n{3,}")
@@ -49,11 +49,7 @@ def _decode_utf8(raw_bytes: bytes, path: Path) -> str:
         raise ParserError(f"{path}: not valid UTF-8 text") from exc
 
 
-class DocumentParser(Protocol):
-    def parse(self, path: Path) -> ParsedDocument: ...
-
-
-class MarkdownParser:
+class MarkdownParser(DocumentParser):
     """Reads .md source, strips a leading YAML frontmatter block if present, and normalizes
     whitespace. Not a full markdown-to-text renderer - markdown syntax is left in place."""
 
@@ -66,7 +62,7 @@ class MarkdownParser:
         )
 
 
-class TextParser:
+class TextParser(DocumentParser):
     """Reads .txt source as-is, normalizing whitespace only."""
 
     def parse(self, path: Path) -> ParsedDocument:
@@ -77,7 +73,7 @@ class TextParser:
         )
 
 
-class PdfParser:
+class PdfParser(DocumentParser):
     """Extracts text per page via pypdf and joins pages with a paragraph break."""
 
     def parse(self, path: Path) -> ParsedDocument:
