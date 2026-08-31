@@ -18,6 +18,7 @@ dependencies = [
     "pydantic-settings>=2.6",
     "alembic>=1.13",
     "pypdf>=5.1",
+    "sentence-transformers>=3.3",
 ]
 
 [dependency-groups]

@@ -203,7 +203,7 @@ infrastructure until an optional deployment phase is explicitly greenlit.
 - [x] 2. PostgreSQL + pgvector (Docker Compose)
 - [x] 3. Document/chunk data model
 - [x] 4. Document parsing & chunking
-- [ ] 5. Embeddings
+- [x] 5. Embeddings
 - [ ] 6. Vector retrieval
 - [ ] 7. Prompt service (templates, versioning, context assembly, safety wrapping of retrieved text)
 - [ ] 8. LLM generation (Bedrock, behind the `LLMClient` abstraction)
@@ -236,4 +236,16 @@ Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) be
 - Initial top-K and threshold.
 - Prompt template for grounded, citation-aware, abstention-capable answers - and how the Prompt
   Service versions/tracks which template produced a given eval run.
+- **Open TODO from Step 5 review, must resolve before the retrieval/RAG-service wiring step:**
+  `HuggingFaceEmbeddingModel.embed()` is a plain synchronous method - correct for now, matches
+  the `EmbeddingModel` Protocol - but `sentence-transformers`' underlying inference is CPU-bound
+  and blocking. Called directly from an `async def` FastAPI handler, it will block the event
+  loop for the full inference duration, stalling every other concurrent request. Whoever wires
+  this into the RAG service orchestrator must offload it (e.g. `asyncio.to_thread`) rather than
+  `await`-ing it inline - do not call `embed()` directly from an async request handler.
+- **Open TODO from Step 5 review:** no composition-root/singleton guard yet ensures the same
+  `HuggingFaceEmbeddingModel` instance is reused for both query-time and ingestion-time
+  embedding (required so document/query vectors stay comparable - see Step 1-3 Learning Gate).
+  Expected to land in the future `dependencies.py` composition point
+  (docs/CODING-GUIDELINES.md section 3), not before.
 - Evaluation dataset format and scoring method for "answer correctness" and "groundedness".
