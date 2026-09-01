@@ -205,7 +205,7 @@ infrastructure until an optional deployment phase is explicitly greenlit.
 - [x] 4. Document parsing & chunking
 - [x] 5. Embeddings
 - [x] 6. Vector retrieval
-- [ ] 7. Prompt service (templates, versioning, context assembly, safety wrapping of retrieved text)
+- [x] 7. Prompt service (templates, versioning, context assembly, safety wrapping of retrieved text)
 - [ ] 8. LLM generation (Bedrock, behind the `LLMClient` abstraction)
 - [ ] 9. Citations
 - [ ] 10. API
@@ -258,4 +258,11 @@ Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) be
   embedding (required so document/query vectors stay comparable - see Step 1-3 Learning Gate).
   Expected to land in the future `dependencies.py` composition point
   (docs/CODING-GUIDELINES.md section 3), not before.
+- **Open TODO from Step 7 review:** `PromptBuilderV1.template_version` ("v1") is currently just
+  a hardcoded label - no content hash, changelog linkage, or persisted mapping from a given eval
+  run's results back to the exact prompt text/instructions used at that time. Fine for this
+  step; the evaluation runner (Step 13) will need something that actually ties the version
+  string to the exact template content rather than trusting a manually-bumped constant (e.g. a
+  hash of `_INSTRUCTIONS` computed at import time, or a stricter review requirement that any
+  wording change bumps the version).
 - Evaluation dataset format and scoring method for "answer correctness" and "groundedness".
