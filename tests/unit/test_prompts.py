@@ -72,8 +72,8 @@ def test_adversarial_chunk_content_stays_inside_its_data_delimiter() -> None:
     """Exercises the actual escaping mechanism (html.escape), not just string placement: the
     payload contains a literal `</document>` tag-close and a fake `<document name=...>` tag-open
     attempt, plus a document_name containing an embedded `"` attempting an attribute breakout.
-    If html.escape() were removed from _chunk_block, this test would fail - it was verified to
-    do so (removed, reran, failed; restored, reran, passed again).
+    If html.escape() were removed from rendering._render_chunk, this test would fail - it was
+    verified to do so (removed, reran, failed; restored, reran, passed again).
 
     This proves the escaping mechanism works, not that prompt injection is fully solved in
     general - a sufficiently clever payload could still mislead the model even while correctly
