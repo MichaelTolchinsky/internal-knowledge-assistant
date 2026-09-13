@@ -206,7 +206,8 @@ infrastructure until an optional deployment phase is explicitly greenlit.
 - [x] 5. Embeddings
 - [x] 6. Vector retrieval
 - [x] 7. Prompt service (templates, versioning, context assembly, safety wrapping of retrieved text)
-- [ ] 8. LLM generation (Bedrock, behind the `LLMClient` abstraction)
+- [x] 8. LLM generation - local provider (`LLMClient` abstraction, `LocalLLMClient` via
+      transformers). **Bedrock provider deferred** - see Open Decisions below.
 - [ ] 9. Citations
 - [ ] 10. API
 - [ ] 11. Tests (unit + integration)
@@ -244,6 +245,13 @@ Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) be
   this into the RAG service orchestrator must offload it via `asyncio.to_thread` rather than
   `await`-ing it inline - do not call `embed()` directly from an async request handler.
 
+  **Still unresolved as of Step 8** (reviewer flagged again): `LocalLLMClient.generate()` in
+  Step 8 correctly wraps its own CPU-bound `model.generate()` call in `asyncio.to_thread`
+  internally (the method's public signature is `async`, callers don't need to think about
+  threading) - `embed()` should follow the same pattern (become `async` and wrap internally)
+  rather than staying sync and requiring every caller to remember to offload it. Do this when
+  `embed()` is actually wired into the RAG service orchestrator, not before.
+
   **Decision: `asyncio.to_thread`, not `ProcessPoolExecutor`.** Generic CPU-bound Python work is
   usually pointed at `ProcessPoolExecutor` instead of threads, since the GIL prevents real
   thread parallelism for pure-Python work. But PyTorch (like NumPy) releases the GIL during its
@@ -265,4 +273,29 @@ Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) be
   string to the exact template content rather than trusting a manually-bumped constant (e.g. a
   hash of `_INSTRUCTIONS` computed at import time, or a stricter review requirement that any
   wording change bumps the version).
+- **Resolved (Step 8): dual LLM provider, `aioboto3` decision recorded ahead of implementation.**
+  This project originally scoped a single LLM provider (README Non-Goals: "multiple LLM
+  providers" unless there's a concrete learning reason). A concrete reason emerged: local
+  generation for cost-free development/testing, with real AWS Bedrock credits available for
+  comparison later - a genuine learning opportunity to contrast a local vs. cloud-hosted LLM
+  behind the same `LLMClient` Protocol, which is exactly what Protocol-based abstraction is for.
+  Step 8 implemented `LocalLLMClient` (transformers, `Qwen/Qwen2.5-0.5B-Instruct`, CPU,
+  generation wrapped in `asyncio.to_thread` internally) and a minimal `get_llm_client()` factory
+  that only supports `"local"` today (`llm_provider: Literal["local"]` - fails loudly via
+  pydantic-settings validation if misconfigured, not silently). **`BedrockLLMClient` is
+  deferred to a later step**, not implemented yet.
+
+  When it is implemented: **use `aioboto3`, not `boto3` + `asyncio.to_thread`** - a deliberate
+  departure from the Step 5 pattern. `invoke_model` is I/O-bound (network round-trip), not
+  CPU-bound like local embedding/generation, so the GIL-release argument that justified
+  `to_thread` for `sentence-transformers`/`transformers` doesn't apply here - a thread would sit
+  idle waiting on a socket, consuming one of a bounded thread-pool slot
+  (`min(32, cpu_count+4)`) for no computational reason. At this project's actual scale (single
+  developer, low concurrency) that cost is real but functionally invisible either way; `aioboto3`
+  was chosen consciously for learning value and prior familiarity, accepting its tradeoffs
+  (community-maintained wrapper around botocore, can lag AWS's own release cadence, one more
+  dependency surface) over `boto3`'s official-support advantage. Confirmed via the project's own
+  reference platform (`agentic-ai-platform`) that `aioboto3` is what real production systems
+  reach for once concurrent load makes thread-pool exhaustion an actual bottleneck - a genuine
+  data point for when this recommendation would flip if it hadn't already been chosen.
 - Evaluation dataset format and scoring method for "answer correctness" and "groundedness".

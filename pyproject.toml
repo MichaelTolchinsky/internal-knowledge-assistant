@@ -19,6 +19,8 @@ dependencies = [
     "alembic>=1.13",
     "pypdf>=5.1",
     "sentence-transformers>=3.3",
+    "transformers>=4.46",
+    "torch>=2.5",
 ]
 
 [dependency-groups]

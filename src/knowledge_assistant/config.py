@@ -5,6 +5,8 @@ at call sites, so the evaluation experiment workflow (change one variable, re-ru
 practical.
 """
 
+from typing import Literal
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -33,6 +35,12 @@ class Settings(BaseSettings):
     # LLM (Bedrock)
     bedrock_model_id: str
     bedrock_region: str
+
+    # LLM (local/CPU)
+    # "local" is the only supported value for now - Bedrock support (Step 8 continuation) isn't
+    # implemented yet, so selecting it must fail loudly (see llm/factory.py), not silently.
+    llm_provider: Literal["local"]
+    local_llm_model_name: str
 
     # Prompts
     prompt_template_version: str

@@ -37,8 +37,12 @@ live in [`AGENTS.md`](AGENTS.md).
 
 Explicitly out of scope unless requested later: multi-agent systems, LangGraph, MCP, complex
 agent orchestration, fine-tuning/model training, Kubernetes, auth/multi-tenancy, a frontend,
-a dedicated vector database (Pinecone/Qdrant/Weaviate), hybrid search (until proven necessary),
-multiple LLM providers.
+a dedicated vector database (Pinecone/Qdrant/Weaviate), hybrid search (until proven necessary).
+
+Multiple LLM providers were originally out of scope too, but a concrete learning reason emerged:
+comparing a local, cost-free LLM against AWS Bedrock behind the same `LLMClient` abstraction
+(see `docs/ARCHITECTURE.md` Open Decisions). Local generation is implemented; Bedrock is
+deferred to a later step.
 
 ## Success Target (initial evaluation milestone)
 
