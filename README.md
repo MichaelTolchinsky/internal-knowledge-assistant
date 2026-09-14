@@ -132,7 +132,7 @@ Requires Python 3.14+ and Docker.
 cp .env.example .env
 python3.14 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]" 2>/dev/null || { pip install -e .; pip install pytest pytest-asyncio pytest-timeout httpx ruff pre-commit alembic; }
-pre-commit install --install-hooks -t pre-commit -t commit-msg
+pre-commit install --config .github/.pre-commit-config.yaml --install-hooks -t pre-commit -t commit-msg
 
 cd docker && docker compose up -d postgres && cd ..
 alembic upgrade head
@@ -142,7 +142,7 @@ pytest tests/
 
 `pre-commit install` wires up git hooks that auto-run `ruff check --fix` + `ruff format` (plus
 basic hygiene checks and a Conventional Commits message check) on every commit - see
-`.pre-commit-config.yaml`. CI (`.github/workflows/ci.yml`) runs the same lint checks in a
+`.github/.pre-commit-config.yaml`. CI (`.github/workflows/ci.yml`) runs the same lint checks in a
 separate `lint` job, so a bad commit still gets caught even if hooks are skipped locally.
 
 Run the full stack (app + postgres) with `docker compose up` from `docker/`.

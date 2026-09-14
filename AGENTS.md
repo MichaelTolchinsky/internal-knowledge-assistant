@@ -1,96 +1,130 @@
 # AGENTS.md
 
-How work on this project gets planned, executed, taught, and reviewed. This file is the source
-of truth for process; it does not describe application architecture (see
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) or coding conventions (see
-[`docs/CODING-GUIDELINES.md`](docs/CODING-GUIDELINES.md)). Anyone implementing a task - human or
-AI agent - should follow `docs/CODING-GUIDELINES.md`.
+Operating contract for human contributors and coding agents working in this repository.
+This file defines process, repository layout, commands, verification standards, and boundaries.
 
-This file defines **roles and gates**, not a specific tool's mechanics. Whatever agent, IDE, or
-workflow you use to actually write code should be able to follow this process.
+System design lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Coding standards live in [`docs/CODING-GUIDELINES.md`](docs/CODING-GUIDELINES.md).
+Historical bugs and postmortems live in [`docs/ENGINEERING-LOG.md`](docs/ENGINEERING-LOG.md).
 
-## Roles
-
-- **Coordinator** - owns markdown documentation, project planning, task breakdown, folder
-  structure, and progress tracking. Does not implement application code.
-- **Execution** - implements a specific, approved task: writes production code, runs relevant
-  tests, reports back the decisions made. Does not make major architectural calls unilaterally -
-  surfaces them as a decision record (see below) instead.
-- **Test** - unit tests, integration tests, edge cases, regression tests, evaluation
-  infrastructure. Can be the same actor as Execution for a small task.
-- **Teacher** - see the Learning Gate below (currently disabled). A distinct responsibility even
-  when carried out by whoever is coordinating the work.
-- **Reviewer** - challenges architecture, correctness, AI-specific design (grounding, citations,
-  abstention), security, cost, latency, and evaluation quality. Should push back, not
-  rubber-stamp.
-
-These roles can map onto separate sessions/agents, separate PR reviewers, or just separate
-mental modes for a single contributor - the process is the same either way.
-
-## Workflow Shape
-
-1. Analyze the task and produce a short execution plan plus an acceptance-criteria checklist.
-2. Get explicit approval on the plan before writing code for anything non-trivial.
-3. Implement against the approved plan; keep diffs scoped to it. Escalate rather than guess on
-   ambiguous requirements or anything outside the plan's stated scope.
-4. Validate with evidence - a passing scoped test run, not just "the edit looks right" - before
-   marking an acceptance criterion done.
-5. Review (tests, lint, and a focused code review pass) before merging.
-
-## Learning Gate (currently disabled for velocity)
-
-**Learning was the primary goal of this project early on**, and the process below was run after
-every major step through Step 10 (API). It's now disabled by explicit developer decision, to
-prioritize implementation speed over the Socratic teaching loop. This section is left intact
-(not deleted) so it can be re-enabled later if the learning-first pace is worth resuming - it is
-not currently enforced.
-
-The process, if re-enabled: after every major implementation step, before starting the next one:
-
-1. Explain the concept behind what was just implemented.
-2. Ask questions about it (Socratic, not just "did you get it?").
-3. Ask for the implementation to be explained back in plain language.
-4. Challenge important assumptions and tradeoffs.
-5. Identify anything that isn't understood yet.
-6. Only then move on to the next major step.
-
-For each major component, be able to explain: what it does, why it exists, how it works, what
-alternatives exist, why the chosen approach was picked, and what its limitations are.
-
-Prefer this loop over passively explaining and moving on:
+## 1. Repository Map
 
 ```
-Question -> Answer -> Correction/explanation -> Follow-up question -> Explanation
+src/
+  knowledge_assistant/
+    api/            # FastAPI routes, dependencies, and Pydantic schemas
+    domain/         # Pure domain dataclasses (Document, RetrievedChunk, Answer, Citation)
+    ingestion/      # Document parser, chunker, and shared ingestion service
+    embeddings/     # EmbeddingModel Protocol and HuggingFace implementation
+    retrieval/      # Retriever Protocol and PostgreSQL/pgvector implementation
+    prompts/        # PromptBuilder Protocol, versioned templates, and context rendering
+    llm/            # LLMClient Protocol, local HuggingFace client, and factory
+    citations/      # CitationExtractor Protocol and regex-based text extractor
+    storage/        # SQLAlchemy persistence models, engine, and session management
+    evaluation/     # Eval dataset loader, scoring metrics, and evaluation runner
+    config.py       # Strict env-driven Settings (no baked defaults, fails fast)
+tests/
+  unit/             # Fast tests using fake Protocol implementations
+  integration/      # End-to-end flows against real PostgreSQL/pgvector
+  evaluation/       # Tests for evaluation loader and metrics
+seed/               # Standalone seed CLI (seed.py) for local knowledge base population
+evaluation/         # Static evaluation dataset (dataset/) and seed corpus (seed_docs/)
+migrations/         # Alembic database migrations
+docker/             # Dockerfile and docker-compose.yml for local stack
+.github/            # GitHub Actions CI, instructions, PR template, and skills (rag-change-validation, rag-evaluation, public-release-audit)
 ```
 
-Optimize for `Understanding x Practical Experience x Retention`, not lines of code per day.
+## 2. Local Commands
 
-## Decision Records
+Run commands from the repository root unless specified.
 
-For each significant technical decision (chunking strategy, embedding model, top-K, chunk size,
-prompt structure, etc.), record:
+```bash
+# Setup environment
+cp .env.example .env
+python3.14 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]" || { pip install -e .; pip install pytest pytest-asyncio pytest-timeout httpx ruff pre-commit alembic; }
+pre-commit install --config .github/.pre-commit-config.yaml --install-hooks -t pre-commit -t commit-msg
 
+# Database management (requires Docker)
+cd docker && docker compose up -d postgres && cd ..
+alembic upgrade head
+
+# Code formatting and linting
+ruff check src tests migrations seed
+ruff format --check src tests migrations seed
+
+# Auto-fix formatting and linting
+ruff check --fix src tests migrations seed
+ruff format src tests migrations seed
+
+# Running tests
+pytest tests/                                    # Full test suite (requires local Postgres and real models)
+pytest tests/ -q -m "not requires_real_llm"      # CI-compatible test run (avoids large trained LLM requirements)
+
+# Database seeding
+python seed/seed.py                              # Ingests evaluation/seed_docs/ into Postgres
+python seed/seed.py --source-dir custom_dir/     # Ingests a custom document directory
+
+# Clean teardown
+cd docker && docker compose down -v && cd ..
 ```
-Decision
-Options considered
-Tradeoffs
-Chosen approach
-Reason
-```
 
-These live alongside the relevant code/docs, or in `docs/ARCHITECTURE.md` for system-level
-choices.
+## 3. Change Loop
 
-## Development Order
+1. **Inspect before modifying**: Check the repository map, target files, and relevant documentation.
+2. **Minimal, surgical edits**: Implement the requested change using existing patterns. Do not refactor unrelated code.
+3. **Run targeted tests**: Run unit and integration tests scoped to affected areas first.
+4. **Run linters and formatters**: Ensure `ruff check` and `ruff format --check` pass without errors.
+5. **Run regression tests**: Verify full test suite passes. If a database is required, ensure migrations and seed succeed.
+6. **Synchronize documentation**: Update markdown documentation when interfaces, behavior, or configuration changes.
 
-Work incrementally; do not implement the entire system in one step. See
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full progression (skeleton -> DB -> data
-model -> chunking -> embeddings -> retrieval -> LLM -> citations -> API -> tests -> eval dataset
--> eval runner -> observability -> seed service -> optional AWS deployment).
+## 4. Acceptance and Completion Criteria
 
-## Non-Goals (do not implement unless explicitly requested)
+A task is complete only when:
+- Code adheres to typed boundaries and `Protocol` subclassing rules in `docs/CODING-GUIDELINES.md`.
+- No raw default values are baked into `src/knowledge_assistant/config.py`. All settings come from `.env` with `.env.example` as documentation.
+- `ruff check src tests migrations seed` and `ruff format --check src tests migrations seed` pass cleanly.
+- `pytest tests/` passes completely on local environments with PostgreSQL running.
+- In CI workflows, `pytest tests/ -q -m "not requires_real_llm"` passes against the lightweight test model.
+- Documentation reflects actual behavior; internal document paths and step labels are not cited inside Python comments or docstrings.
 
-Multi-agent systems, LangGraph, MCP, complex agent orchestration, fine-tuning/model training,
-Kubernetes, auth/authorization, multi-tenancy, a frontend, a dedicated vector database, a complex
-document management UI, multiple LLM providers, hybrid search (until proven necessary via
-evaluation).
+## 5. Escalation Rules for Ambiguity
+
+Do not guess when hitting ambiguous choices:
+- If a configuration requirement conflicts with environment loading or schema validation, stop and escalate.
+- If an architectural choice introduces a new external dependency or breaks protocol boundaries, stop and present trade-offs.
+- If a test failure stems from a non-deterministic model output versus code logic, isolate and escalate with exact repro steps.
+- If destructive operations (database wipes, branch force pushes, file deletions outside ephemeral scratch) are needed, request explicit confirmation.
+
+## 6. Documentation Synchronization
+
+- Documentation must represent current-state architecture and behavior.
+- Narrative bug histories, investigation journeys, and postmortems belong in `docs/ENGINEERING-LOG.md`, not `docs/ARCHITECTURE.md`.
+- Python docstrings and comments must state technical intent and rationale directly. Never cite document paths (e.g. `docs/ARCHITECTURE.md`, `docs/CODING-GUIDELINES.md`) or historical step numbers (e.g. "Step 5") inside Python source code.
+- Keep links between markdown files relative and verified.
+
+## 7. Security and Secrets Handling
+
+- Never commit real credentials, secret keys, or `.env` files containing live secrets.
+- `.env.example` contains non-secret placeholders and documentation only.
+- In scripts, logs, and error outputs, redact connection strings and passwords. Never log sensitive payloads or query texts in production.
+- Sanitize retrieved text chunks before rendering into prompt templates (`html.escape` wrapping in `<document>` blocks) to prevent prompt injection breakouts.
+
+## 8. RAG-Specific Trust Requirements
+
+- **Strict grounding**: Company-specific questions must be answered using retrieved documentation context only.
+- **Explicit abstention**: If retrieved chunks lack sufficient information, the system must abstain cleanly (`abstained: true` or `citations_missing: true`), not hallucinate answers from base model weights.
+- **Exact citations**: Generated statements must map back to retrieved `(source: <document_name>, chunk <chunk_index>)` markers when the LLM supports it.
+- **Fail fast on mismatches**: Embedding dimensions must match vector store column dimensions (`settings.embedding_dimension == 384`). Any mismatch must abort immediately.
+
+## 9. Non-Goals
+
+Do not introduce or accept contributions for:
+- Multi-agent orchestration, LangGraph, or AutoGen frameworks.
+- Model context protocol (MCP) server integrations within the application runtime.
+- Model fine-tuning or custom training pipelines.
+- Kubernetes deployment manifests or Helm charts.
+- User authentication, multi-tenancy, or permission models.
+- Dedicated vector databases (Pinecone, Qdrant, Weaviate, Milvus).
+- Web frontends or complex administrative UIs.
+- Hybrid keyword-vector search (until empirical evaluation on current datasets demonstrates necessity).
