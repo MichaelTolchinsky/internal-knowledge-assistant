@@ -1,92 +1,162 @@
 # Internal Knowledge Assistant
 
-A small, production-oriented **RAG (Retrieval-Augmented Generation)** system built to learn
-AI engineering concepts end-to-end, not just to ship a demo.
+A local-first **RAG (Retrieval-Augmented Generation)** learning project built to understand AI engineering concepts end-to-end, without relying on hosted LLM APIs or black-box frameworks.
 
-## Scope
+The system simulates an internal knowledge assistant for a mid-sized SaaS company. Users submit natural-language questions over internal company documentation (rate limits, deployment runbooks, auth policies, database access, FAQs). The assistant retrieves relevant chunked context from a local vector store and generates answers **grounded exclusively in the retrieved documentation**, identifying sources and explicitly abstaining when information is absent.
 
-Simulates an internal knowledge assistant for a mid-sized SaaS company. Employees ask
-natural-language questions; the system retrieves relevant internal documentation (product docs,
-runbooks, troubleshooting guides, policies, API docs, onboarding, FAQs) and generates an answer
-**grounded only in retrieved context**, with citations back to source documents/chunks.
+## Learning Objectives
 
-**Critical requirement:** the assistant must not fall back on the model's general knowledge for
-company-specific questions. If retrieved documentation is insufficient, it must say so rather
-than hallucinate.
+- Build every layer of a RAG pipeline from first principles using focused third-party libraries and typed `Protocol` boundaries.
+- Run local Hugging Face embedding and causal language models on commodity hardware with zero API token costs.
+- Store document chunks and perform vector similarity search using PostgreSQL with the `pgvector` extension.
+- Isolate untrusted retrieved context using structural delimiters and prompt safety techniques to mitigate prompt injection.
+- Parse citations and implement clean abstention detection without confusing format misses with hallucinations.
+- Build reproducible RAG evaluation benchmarks measuring answer correctness, recall, groundedness, abstention accuracy, and latency.
 
-Scoped as a small, incremental build: get the core ingest -> retrieve -> answer -> cite loop
-working locally first, then evaluate it, then treat AWS deployment as an optional later phase.
+> **Scope Note:** This project is intentionally local-first and educational. Cloud deployment, AWS CDK, and AWS Bedrock are out of scope. All runtime components run on local infrastructure.
 
-## Goals
+---
 
-Learn and demonstrate, hands-on:
+## Architecture & End-to-End Flow
 
-- Document ingestion, chunking, and embeddings (local HuggingFace / Sentence Transformers)
-- Vector storage and similarity search with PostgreSQL + pgvector
-- Retrieval, context construction, and grounded LLM generation (AWS Bedrock)
-- Citations / source attribution
-- RAG evaluation (correctness, retrieval quality, groundedness, abstention accuracy, latency, cost)
-- Basic observability (structured logging, LangSmith traces)
-- Docker Compose for local dev; AWS CDK for optional deployment
+Every pipeline stage is implemented as an independent, inspectable module orchestrated by a lightweight service layer:
 
-Full detail lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Coding conventions live in
-[`docs/CODING-GUIDELINES.md`](docs/CODING-GUIDELINES.md). Agent/contributor roles and process
-live in [`AGENTS.md`](AGENTS.md). The real bugs found and fixed during development (with full
-specifics, not just current-state architecture) are recorded in
-[`docs/ENGINEERING-LOG.md`](docs/ENGINEERING-LOG.md).
+```
+[ Documents (Markdown / Text / PDF) ]
+                  │
+                  ▼
+   1. Ingestion & Parsing (pypdf, custom text/markdown parsers)
+                  │
+                  ▼
+   2. Recursive Character Chunking (chunk_size: 800, chunk_overlap: 100)
+                  │
+                  ▼
+   3. Local Embedding Inference (sentence-transformers/all-MiniLM-L6-v2)
+                  │
+                  ▼
+   4. Vector Persistence & Indexing (PostgreSQL 17 + pgvector HNSW cosine)
+                  │
+  ┌───────────────┴──────────────────────────────────────┐
+  │ Query Flow                                            │
+  ▼                                                       ▼
+[ User Question via FastAPI ]                    [ Ingested Corpus ]
+  │                                                       │
+  ▼                                                       │
+Query Embedding (all-MiniLM-L6-v2)                        │
+  │                                                       │
+  ▼                                                       │
+Cosine Similarity Retrieval (Top-K = 5) ◄─────────────────┘
+  │
+  ▼
+Context Rendering & Safety Wrapping (Escaped XML <document> tags)
+  │
+  ▼
+Prompt Construction (v1 grounded instruction template)
+  │
+  ▼
+Local LLM Generation (Qwen/Qwen2.5-0.5B-Instruct via transformers)
+  │
+  ▼
+Citation Extraction & Abstention Parsing (Regex markers & phrase detection)
+  │
+  ▼
+JSON Response (answer, citations, abstained, citations_missing)
+```
 
-## Non-Goals
+### Local Models
 
-Explicitly out of scope unless requested later: multi-agent systems, LangGraph, MCP, complex
-agent orchestration, fine-tuning/model training, Kubernetes, auth/multi-tenancy, a frontend,
-a dedicated vector database (Pinecone/Qdrant/Weaviate), hybrid search (until proven necessary).
+- **Embedding Model:** `sentence-transformers/all-MiniLM-L6-v2` (384-dimensional dense vectors). Fast, lightweight, and runs on CPU.
+- **Generation Model:** `Qwen/Qwen2.5-0.5B-Instruct` (0.5B parameter instruction-tuned causal language model). Runs locally via Hugging Face `transformers` and `torch`.
 
-Multiple LLM providers were originally out of scope too, but a concrete learning reason emerged:
-comparing a local, cost-free LLM against AWS Bedrock behind the same `LLMClient` abstraction
-(see `docs/ARCHITECTURE.md` Open Decisions). Local generation is implemented; Bedrock is
-deferred to a later step.
+Both models download automatically from Hugging Face on initial run and are cached locally in `~/.cache/huggingface/`. No API keys or paid accounts are required.
 
-## Success Target (initial evaluation milestone)
+---
 
-Evaluation dataset of 20-30 questions:
+## Key Features
 
-- >= 80% answer correctness
-- >= 90% source retrieval hit rate @5
-- >= 90% correct abstention on unanswerable questions
-- 0 critical hallucinations on known-answer questions
+- **Typed Protocol Abstractions:** `EmbeddingModel`, `Retriever`, `PromptBuilder`, `LLMClient`, and `CitationExtractor` are clean `typing.Protocol` interfaces, keeping components swappable and testable with lightweight fakes.
+- **Fail-Fast Configuration:** Centralized settings in `config.py` driven by `pydantic-settings`. No fallback defaults are baked into source code; missing variables fail on startup.
+- **Prompt Injection Defense:** Retrieved chunks are treated as untrusted data, escaped with `html.escape`, and enclosed in labeled `<document>` tags.
+- **Two-Dimensional Grounding Signals:** Differentiates explicit abstention (`abstained: true`) from format compliance issues (`citations_missing: true`), avoiding false-positive accuracy reporting.
+- **Evaluation Benchmark:** Automated evaluation harness scoring test sets on correctness, Recall@5, groundedness, and abstention accuracy against versioned datasets.
+- **Repeatable Seeding:** Idempotent database population CLI (`seed.py`) indexing reference documents with deterministic content hashing.
 
-These are learning targets, not production SLAs - the point is that results are measurable and
-reproducible, so future changes (chunking, top-K, embedding model, prompt) can be compared
-against a baseline.
+---
 
-## Definition of Done
+## Technology Stack
 
-- [x] Documents can be ingested, chunked, embedded, and stored in pgvector.
-- [x] Questions can be submitted through the API; relevant chunks are retrieved.
-- [x] The LLM generates grounded answers with citations, and abstains when documentation is
-      insufficient (with a known local-model citation-compliance gap documented in
-      `docs/ARCHITECTURE.md`).
-- [x] Unit tests cover core deterministic logic; integration tests cover the retrieval path.
-- [x] A versioned evaluation dataset exists and metrics are reproducible; a baseline is recorded
-      (`docs/ARCHITECTURE.md` section 12).
-- [ ] At least one RAG improvement experiment has been run against the baseline (change one
-      variable, re-run, compare - not yet done; the baseline itself is recorded).
-- [x] Token/cost and latency are measurable.
-- [x] The app runs locally via Docker Compose, with a repeatable seed process.
-- [ ] AWS deployment is optional and can be added afterward (not started - Step 16).
+| Layer | Component | Choice & Rationale |
+|---|---|---|
+| **Vector Database** | PostgreSQL 17 + `pgvector` | Single relational datastore for relational metadata and vector embeddings with HNSW indexing. |
+| **Embeddings** | `sentence-transformers/all-MiniLM-L6-v2` | 384-dimensional local sentence embeddings, zero API cost, CPU-friendly. |
+| **Language Model** | `Qwen/Qwen2.5-0.5B-Instruct` | Local open-weight instruction-following LLM for zero-cost generation. |
+| **API Framework** | FastAPI + Pydantic v2 | High-performance asynchronous API with typed request/response contracts. |
+| **Data Persistence** | SQLAlchemy 2.x (Async) + Alembic | Asynchronous database access and migration tracking. |
+| **Observability** | Structured Logging + LangSmith | JSON-structured logging with optional LangSmith tracing for query debugging. |
+| **Testing & Quality**| Pytest + Ruff | Unit and integration test suites, strict linting, and automated formatting. |
+
+---
 
 ## Quick Start
 
-With the stack running (`docker compose up` from `docker/`, or `uvicorn
-knowledge_assistant.api.main:app` locally against a running Postgres) and the seed corpus
-ingested (`python seed/seed.py`), ask a real question from the evaluation dataset
-(`evaluation/dataset/v1.jsonl`):
+### Prerequisites
+
+- Python 3.14+
+- Docker and Docker Compose
+- `curl` or an HTTP client
+
+### 1. Environment Setup
+
+Clone the repository and initialize the virtual environment:
+
+```bash
+cp .env.example .env
+python3.14 -m venv .venv && source .venv/bin/activate
+pip install -e .
+pip install pytest pytest-asyncio pytest-timeout httpx ruff pre-commit alembic fpdf2
+pre-commit install --config .github/.pre-commit-config.yaml --install-hooks -t pre-commit -t commit-msg
+```
+
+*Note: `.env.example` provides default configuration keys. Never store production credentials or private keys in tracked files.*
+
+### 2. Start PostgreSQL & Apply Migrations
+
+Start the PostgreSQL service container with `pgvector`:
+
+```bash
+cd docker && docker compose up -d postgres && cd ..
+alembic upgrade head
+```
+
+### 3. Ingest Knowledge Base
+
+Run the seed CLI to parse, chunk, embed, and index the reference corpus (`evaluation/seed_docs/`):
+
+```bash
+python seed/seed.py
+```
+
+### 4. Start the Application API
+
+Run the FastAPI application locally:
+
+```bash
+uvicorn knowledge_assistant.api.main:app --host 0.0.0.0 --port 8000
+```
+
+---
+
+## Query Example
+
+Submit a query via `curl`:
 
 ```bash
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
   -d '{"question": "What is the default API rate limit?"}'
 ```
+
+### Representative Response
 
 ```json
 {
@@ -97,64 +167,124 @@ curl -X POST http://localhost:8000/query \
 }
 ```
 
-This is a real, representative response shape from the local provider (`Qwen2.5-0.5B-Instruct`)
-- note `citations: []` and `citations_missing: true` even though the answer is factually
-correct: the local model's known citation-marker compliance gap (see "Evaluation Results" below)
-means it usually gets the *content* right without including the `(source: ..., chunk N)`
-markers the prompt asks for. `citations_missing` exists precisely to surface that honestly
-rather than hide it behind a misleading `abstained` flag.
+### Response Field Semantics
 
-## Evaluation Results
+- `answer`: Generated answer text from the local LLM.
+- `citations`: Extracted structured citations referencing source documents and chunk IDs.
+- `abstained`: `true` if the model recognized that the retrieved context did not contain enough information and explicitly invoked the instructed abstention phrase.
+- `citations_missing`: `true` if the answer was generated without valid citation markers while not abstaining. Because `Qwen2.5-0.5B-Instruct` is a compact 0.5B parameter model, it frequently answers correctly from retrieved context while omitting exact citation markup. Surfacing `citations_missing` ensures this instruction-following limitation is visible rather than conflated with hallucinations or abstentions.
 
-Baseline run (full detail in
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#12-first-baseline-evaluation-run-local-provider-qwen25-05b-instruct),
-57-question dataset, 11 seed documents, local provider):
+---
 
-| Metric | Result | Target | Met? |
+## Evaluation Baseline
+
+The repository includes a versioned evaluation dataset in [`evaluation/dataset/v1.jsonl`](evaluation/dataset/v1.jsonl) containing 57 questions (44 answerable, 13 unanswerable) written against 11 internal seed documents.
+
+Baseline performance recorded using `Qwen2.5-0.5B-Instruct` and `all-MiniLM-L6-v2`:
+
+| Metric | Baseline Result | Learning Target | Status |
 |---|---|---|---|
-| Answer correctness | **79.5%** | >= 80% | Essentially met |
-| Recall@5 (source hit rate) | **100.0%** | >= 90% | ✅ Met |
-| Abstention accuracy | **92.3%** | >= 90% | ✅ Met |
-| Groundedness (citation names the expected source) | **0.0%** | - | ⚠️ Known gap - see below |
+| **Answer Correctness** | **79.5%** | >= 80% | Essentially met |
+| **Recall@5** (Retrieval Hit Rate) | **100.0%** | >= 90% | Met |
+| **Abstention Accuracy** | **92.3%** | >= 90% | Met |
+| **Groundedness** (Citation Accuracy) | **0.0%** | Diagnostic only | Known limitation (see below) |
 
-**Why groundedness is 0%, honestly:** the local model gives correct, well-retrieved answers
-(hence the strong correctness/recall numbers) but almost never includes the citation-marker
-format the prompt instructs - a documented, investigated instruction-following limitation of
-this specific small local model, not a bug in retrieval, prompting, or citation extraction (all
-verified working end-to-end). See `docs/ARCHITECTURE.md`'s Open Decisions for the full
-reasoning.
+### Understanding the Groundedness Result
 
-## Local Development
+Groundedness requires the model to output exact citations naming the expected document. While retrieval recall is 100% and factual correctness is ~80%, the compact 0.5B parameter model often fails to follow the complex formatting instructions required to generate `(source: doc.md, chunk 0)` citation tags.
 
-Requires Python 3.14+ and Docker.
+Running one-variable tuning experiments (testing prompt wording, chunk geometry, top-K, or similarity threshold) against this baseline is an ongoing learning opportunity supported by the evaluation suite:
 
 ```bash
-cp .env.example .env
-python3.14 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]" 2>/dev/null || { pip install -e .; pip install pytest pytest-asyncio pytest-timeout httpx ruff pre-commit alembic; }
-pre-commit install --config .github/.pre-commit-config.yaml --install-hooks -t pre-commit -t commit-msg
-
-cd docker && docker compose up -d postgres && cd ..
-alembic upgrade head
-
-pytest tests/
+python -m knowledge_assistant.evaluation.runner
 ```
 
-`pre-commit install` wires up git hooks that auto-run `ruff check --fix` + `ruff format` (plus
-basic hygiene checks and a Conventional Commits message check) on every commit - see
-`.github/.pre-commit-config.yaml`. CI (`.github/workflows/ci.yml`) runs the same lint checks in a
-separate `lint` job, so a bad commit still gets caught even if hooks are skipped locally.
+---
 
-Run the full stack (app + postgres) with `docker compose up` from `docker/`.
+## Project Layout
+
+```
+.
+├── src/knowledge_assistant/
+│   ├── api/            # FastAPI routes, schemas, and dependencies
+│   ├── domain/         # Core dataclasses (Document, RetrievedChunk, Answer, Citation)
+│   ├── ingestion/      # Document parser, chunker, and ingestion service
+│   ├── embeddings/     # EmbeddingModel protocol and Hugging Face implementation
+│   ├── retrieval/      # Retriever protocol and pgvector implementation
+│   ├── prompts/        # PromptBuilder protocol, templates, and safety escaping
+│   ├── llm/            # LLMClient protocol and local transformers client
+│   ├── citations/      # CitationExtractor protocol and regex parsing logic
+│   ├── storage/        # SQLAlchemy persistence models and async engine
+│   ├── evaluation/     # Dataset loader, scoring metrics, and evaluation runner
+│   └── config.py       # Pydantic Settings loaded from environment
+├── tests/
+│   ├── unit/           # Fast unit tests using fake protocol implementations
+│   ├── integration/    # Database and retrieval integration tests
+│   └── evaluation/     # Evaluation runner and dataset integrity tests
+├── seed/               # Standalone seed CLI (seed.py)
+├── evaluation/         # Static evaluation dataset (v1.jsonl) and seed documents
+├── docker/             # Docker Compose configuration for PostgreSQL
+├── docs/               # Architecture specs, coding guidelines, and engineering log
+└── .github/            # GitHub Actions CI, instructions, and workflow skills
+```
+
+---
+
+## Development Commands
+
+Run all commands from the repository root:
+
+```bash
+# Code formatting and linting
+ruff check src tests migrations seed
+ruff format --check src tests migrations seed
+
+# Auto-fix formatting and linting
+ruff check --fix src tests migrations seed
+ruff format src tests migrations seed
+
+# Run test suite
+pytest tests/ -q -m "not requires_real_llm"      # Fast test suite (used in CI)
+pytest tests/                                    # Full test suite (requires local Postgres & models)
+
+# Database migrations
+alembic upgrade head                             # Apply pending migrations
+alembic revision --autogenerate -m "description" # Generate new migration
+
+# Teardown local containers
+cd docker && docker compose down -v && cd ..
+```
+
+---
+
+## Limitations & Non-Goals
+
+The following areas are explicitly outside the scope of this learning project:
+
+- **Cloud Deployment:** No AWS CDK, Terraform, Kubernetes, or hosted cloud resources.
+- **Hosted Model APIs:** No integrations with AWS Bedrock, OpenAI, or Anthropic APIs.
+- **Multi-Agent Orchestration:** No LangGraph, AutoGen, or agent-loop frameworks.
+- **Specialized Vector SaaS:** No Pinecone, Qdrant, or Weaviate; PostgreSQL with `pgvector` is the sole datastore.
+- **User Authentication:** No JWT, OAuth2, or multi-tenant permission layers.
+- **Web User Interface:** No React, Vue, or frontend web client; interactions occur via HTTP API.
+
+---
 
 ## Status
 
-Steps 1-15 of the development progression are complete (see
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#10-development-progression)): the full RAG
-pipeline (parsing/chunking, local embeddings, pgvector retrieval, prompt construction with
-injection-mitigation, local LLM generation, citation extraction/abstention detection, a FastAPI
-`/query` endpoint, structured logging + optional LangSmith tracing, and a repeatable seed CLI)
-is implemented and covered by unit + integration tests. A first evaluation baseline has been
-recorded (`docs/ARCHITECTURE.md` section 12). Only **Step 16 (optional AWS deployment)**
-remains, not yet started. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the system
-design and [`AGENTS.md`](AGENTS.md) for how work is planned and executed.
+The local RAG learning system is implemented and working end-to-end. Ingestion, pgvector similarity search, prompt construction, local Hugging Face model inference, citation/abstention evaluation, and the FastAPI service are fully operational locally. Cloud deployment to AWS and Bedrock integration are intentionally excluded.
+
+---
+
+## Documentation
+
+- **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)**: System design, domain models, and technical trade-offs.
+- **[`docs/CODING-GUIDELINES.md`](docs/CODING-GUIDELINES.md)**: Coding conventions, `typing.Protocol` boundaries, and testing patterns.
+- **[`docs/ENGINEERING-LOG.md`](docs/ENGINEERING-LOG.md)**: Postmortems of real bugs, edge cases, and design iterations encountered during development.
+- **[`AGENTS.md`](AGENTS.md)**: Operating contract, change loop, acceptance criteria, and repository boundaries for human and agent workflows.
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
