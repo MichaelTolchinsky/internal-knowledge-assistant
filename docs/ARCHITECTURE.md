@@ -237,20 +237,15 @@ Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) be
 - Initial top-K and threshold.
 - Prompt template for grounded, citation-aware, abstention-capable answers - and how the Prompt
   Service versions/tracks which template produced a given eval run.
-- **Open TODO from Step 5 review, must resolve before the retrieval/RAG-service wiring step:**
-  `HuggingFaceEmbeddingModel.embed()` is a plain synchronous method - correct for now, matches
-  the `EmbeddingModel` Protocol - but `sentence-transformers`' underlying inference is CPU-bound
-  and blocking. Called directly from an `async def` FastAPI handler, it will block the event
-  loop for the full inference duration, stalling every other concurrent request. Whoever wires
-  this into the RAG service orchestrator must offload it via `asyncio.to_thread` rather than
-  `await`-ing it inline - do not call `embed()` directly from an async request handler.
-
-  **Still unresolved as of Step 8** (reviewer flagged again): `LocalLLMClient.generate()` in
-  Step 8 correctly wraps its own CPU-bound `model.generate()` call in `asyncio.to_thread`
-  internally (the method's public signature is `async`, callers don't need to think about
-  threading) - `embed()` should follow the same pattern (become `async` and wrap internally)
-  rather than staying sync and requiring every caller to remember to offload it. Do this when
-  `embed()` is actually wired into the RAG service orchestrator, not before.
+- **~~Open TODO from Step 5 review~~ Resolved (Step 10, sub-step 1):**
+  `HuggingFaceEmbeddingModel.embed()` is now `async def embed(...)`, matching
+  `LocalLLMClient.generate()`'s pattern from Step 8: the blocking `sentence-transformers`
+  `.encode()` call is offloaded internally via `asyncio.to_thread`, so the public signature is
+  `async` and callers never need to think about threading themselves. This was flagged as a
+  correctness risk since Step 5 - calling the old sync `embed()` directly from an `async def`
+  FastAPI handler would have blocked the event loop for the full inference duration, stalling
+  every other concurrent request. Done ahead of the retrieval/RAG-service wiring step (Step 10)
+  so nothing gets wired against the old sync signature.
 
   **Decision: `asyncio.to_thread`, not `ProcessPoolExecutor`.** Generic CPU-bound Python work is
   usually pointed at `ProcessPoolExecutor` instead of threads, since the GIL prevents real

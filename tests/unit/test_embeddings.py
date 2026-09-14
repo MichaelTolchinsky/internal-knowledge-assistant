@@ -22,15 +22,15 @@ def model() -> HuggingFaceEmbeddingModel:
 
 
 @pytest.mark.unit
-def test_dimension_matches_settings(model: HuggingFaceEmbeddingModel) -> None:
+async def test_dimension_matches_settings(model: HuggingFaceEmbeddingModel) -> None:
     assert model.dimension == settings.embedding_dimension
 
 
 @pytest.mark.unit
-def test_embed_returns_one_vector_per_text_of_configured_dimension(
+async def test_embed_returns_one_vector_per_text_of_configured_dimension(
     model: HuggingFaceEmbeddingModel,
 ) -> None:
-    vectors = model.embed(["some text"])
+    vectors = await model.embed(["some text"])
 
     assert len(vectors) == 1
     assert isinstance(vectors[0], list)
@@ -39,9 +39,9 @@ def test_embed_returns_one_vector_per_text_of_configured_dimension(
 
 
 @pytest.mark.unit
-def test_embed_is_deterministic(model: HuggingFaceEmbeddingModel) -> None:
-    first = model.embed(["Rotate production API credentials regularly."])[0]
-    second = model.embed(["Rotate production API credentials regularly."])[0]
+async def test_embed_is_deterministic(model: HuggingFaceEmbeddingModel) -> None:
+    first = (await model.embed(["Rotate production API credentials regularly."]))[0]
+    second = (await model.embed(["Rotate production API credentials regularly."]))[0]
 
     # sentence-transformers inference on CPU/MPS is deterministic in practice, but float
     # accumulation order isn't guaranteed bit-identical across runs/backends - compare with a
@@ -50,10 +50,10 @@ def test_embed_is_deterministic(model: HuggingFaceEmbeddingModel) -> None:
 
 
 @pytest.mark.unit
-def test_embed_differs_for_semantically_different_texts(
+async def test_embed_differs_for_semantically_different_texts(
     model: HuggingFaceEmbeddingModel,
 ) -> None:
-    vectors = model.embed(
+    vectors = await model.embed(
         ["Rotate production API credentials regularly.", "The cat sat on the mat."]
     )
 
