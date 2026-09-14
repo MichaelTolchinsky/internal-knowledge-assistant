@@ -133,13 +133,13 @@ def test_normal_answer_with_valid_citations_is_not_abstained_and_not_missing_cit
 
 @pytest.mark.unit
 def test_zero_citations_non_empty_answer_sets_citations_missing_not_abstained() -> None:
-    """The previously-ambiguous case the Step 9 fix-pass separated out: a non-empty answer with
-    no valid citations and no abstention phrase match is neither a documented abstention nor
-    silently ignored - it sets citations_missing=True, abstained=False. Known tradeoff,
-    documented deliberately: this also fires for a model that gave a genuinely correct,
-    grounded answer but simply forgot to add citation markers (a formatting slip, not an
-    abstention or a wrong answer) - citations_missing is a citation-format-compliance signal,
-    not a correctness judgment, and must not be misread as "the answer is wrong."
+    """A non-empty answer with no valid citations and no abstention phrase match is neither a
+    documented abstention nor silently ignored - it sets citations_missing=True,
+    abstained=False. Known tradeoff, documented deliberately: this also fires for a model that
+    gave a genuinely correct, grounded answer but simply forgot to add citation markers (a
+    formatting slip, not an abstention or a wrong answer) - citations_missing is a
+    citation-format-compliance signal, not a correctness judgment, and must not be misread as
+    "the answer is wrong."
     """
     answer_text = "The rate limit is 100 requests per minute."
 

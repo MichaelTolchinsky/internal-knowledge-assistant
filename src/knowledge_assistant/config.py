@@ -1,8 +1,7 @@
 """Centralized, env-driven settings.
 
-Per docs/CODING-GUIDELINES.md section 6: every RAG-tunable parameter lives here, not hardcoded
-at call sites, so the evaluation experiment workflow (change one variable, re-run, compare) is
-practical.
+Every RAG-tunable parameter lives here, not hardcoded at call sites, so the evaluation
+experiment workflow (change one variable, re-run, compare) is practical.
 """
 
 from typing import Literal
@@ -18,9 +17,9 @@ class Settings(BaseSettings):
     database_url: str
 
     # Embeddings
-    # Decision (docs/ARCHITECTURE.md, Open Decisions): sentence-transformers/all-MiniLM-L6-v2 -
-    # small, fast, CPU-friendly, well-established default for local embedding inference. Changing
-    # this requires a migration (vector column dimension) and re-embedding existing chunks.
+    # Decision: sentence-transformers/all-MiniLM-L6-v2 - small, fast, CPU-friendly,
+    # well-established default for local embedding inference. Changing this requires a
+    # migration (vector column dimension) and re-embedding existing chunks.
     embedding_model_name: str
     embedding_dimension: int
 

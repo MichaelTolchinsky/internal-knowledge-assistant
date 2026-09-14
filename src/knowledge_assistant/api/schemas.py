@@ -1,6 +1,6 @@
 """Pydantic request/response models for the API - the HTTP-facing shape, distinct from the
-framework-free domain types (knowledge_assistant.domain) per docs/CODING-GUIDELINES.md section 5.
-Domain dataclasses are never returned directly from a route - they're mapped to these models.
+framework-free domain types (knowledge_assistant.domain). Domain dataclasses are never returned
+directly from a route - they're mapped to these models.
 """
 
 from __future__ import annotations

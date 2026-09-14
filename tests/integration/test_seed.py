@@ -1,6 +1,6 @@
-"""Integration tests for ingest_directory (tests/integration/test_seed.py, per Step 15's scope):
-multi-file ingestion, idempotency on a second run, and resilience to one malformed file not
-aborting the rest of the directory. Real Postgres, real embedding model - no fakes.
+"""Integration tests for ingest_directory: multi-file ingestion, idempotency on a second run,
+and resilience to one malformed file not aborting the rest of the directory. Real Postgres,
+real embedding model - no fakes.
 """
 
 from __future__ import annotations

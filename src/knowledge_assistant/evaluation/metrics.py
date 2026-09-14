@@ -1,5 +1,5 @@
-"""Evaluation metrics per docs/ARCHITECTURE.md section 3.3 (answer correctness, Recall@K,
-groundedness, abstention accuracy, latency, cost).
+"""Evaluation metrics: answer correctness, Recall@K, groundedness, abstention accuracy,
+latency, cost.
 
 This is a learning project, not a production eval harness - scoring is deliberately simple and
 explainable, not semantic-similarity scoring or an LLM-judge (both reasonable future upgrades,

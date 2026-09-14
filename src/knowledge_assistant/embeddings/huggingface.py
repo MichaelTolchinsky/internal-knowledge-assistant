@@ -16,7 +16,7 @@ from knowledge_assistant.embeddings.protocols import EmbeddingModel
 class EmbeddingDimensionMismatchError(Exception):
     """Raised when the loaded model's actual output dimension doesn't match
     settings.embedding_dimension - a silent mismatch here would corrupt the pgvector(384)
-    column (see docs/ARCHITECTURE.md section 4 / Open Decisions)."""
+    column."""
 
 
 class HuggingFaceEmbeddingModel(EmbeddingModel):
@@ -29,10 +29,9 @@ class HuggingFaceEmbeddingModel(EmbeddingModel):
     `.encode()` call is CPU-bound, not I/O-bound, so there's no event loop to cooperate with
     during inference. Rather than block the event loop for the whole call, the actual blocking
     work is offloaded to a worker thread via `asyncio.to_thread`, so callers get a consistent
-    async interface without needing to think about threading themselves (see
-    docs/ARCHITECTURE.md Open Decisions for why `asyncio.to_thread` and not
-    `ProcessPoolExecutor` - PyTorch releases the GIL during tensor computation, so this still
-    gets genuine cross-core concurrency).
+    async interface without needing to think about threading themselves. `asyncio.to_thread`
+    (not `ProcessPoolExecutor`) works well here since PyTorch releases the GIL during tensor
+    computation, so this still gets genuine cross-core concurrency.
     """
 
     def __init__(self, model_name: str | None = None) -> None:

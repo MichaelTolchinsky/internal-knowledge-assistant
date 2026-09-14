@@ -2,7 +2,7 @@
 
 Importing this module triggers real model loads (HuggingFaceEmbeddingModel, LocalLLMClient) via
 dependencies.py's module-level construction - consistent with this project's "no mocking the
-real model" testing philosophy elsewhere (Step 5/8 embedding/LLM tests).
+real model" testing philosophy elsewhere (the embedding/LLM tests).
 """
 
 from __future__ import annotations

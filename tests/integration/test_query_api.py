@@ -40,7 +40,7 @@ _AUTH_CONTENT = (
 @pytest.fixture
 async def seeded_documents(db_session: AsyncSession) -> AsyncGenerator[None]:
     """Two real documents/chunks with REAL embeddings (via the actual
-    dependencies.get_embedding_model() singleton) - unlike Step 6's retrieval tests, which
+    dependencies.get_embedding_model() singleton) - unlike the retrieval unit tests, which
     deliberately used hand-built vectors to isolate SQL logic, this test exercises the real
     embedding model end-to-end."""
     embedder = get_embedding_model()
@@ -130,13 +130,12 @@ def test_query_answerable_question_returns_grounded_answer(
 def test_query_with_no_relevant_content_signals_uncertainty(
     client: TestClient, seeded_documents: None
 ) -> None:
-    """A question with no relevant seeded content. Empirically (Step 9 fix-pass real repro,
-    reconfirmed here), this small local model does not reliably abstain using the documented
-    phrase for an off-topic question, and may even answer from its own general knowledge
-    instead of admitting it lacks context - but it also never produces a valid citation in that
-    case. So the reliable, reproducible signal for "the system doesn't actually have grounded
-    information for this" is: abstained OR citations_missing is True (not "the answer text says
-    exactly the abstention phrase").
+    """A question with no relevant seeded content. Empirically, this small local model does not
+    reliably abstain using the documented phrase for an off-topic question, and may even answer
+    from its own general knowledge instead of admitting it lacks context - but it also never
+    produces a valid citation in that case. So the reliable, reproducible signal for "the system
+    doesn't actually have grounded information for this" is: abstained OR citations_missing is
+    True (not "the answer text says exactly the abstention phrase").
     """
     start = time.perf_counter()
     response = client.post(

@@ -26,8 +26,8 @@ _PDF_MAX_PAGES = 500
 
 
 class ParserError(Exception):
-    """Raised when a source file cannot be parsed - per docs/CODING-GUIDELINES.md section 4,
-    a small boundary-specific exception instead of letting raw decode/SDK errors leak out."""
+    """Raised when a source file cannot be parsed - a small boundary-specific exception instead
+    of letting raw decode/SDK errors leak out."""
 
 
 def _normalize_whitespace(text: str) -> str:

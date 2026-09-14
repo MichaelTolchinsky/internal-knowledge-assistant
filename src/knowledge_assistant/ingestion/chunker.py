@@ -1,11 +1,10 @@
 """Paragraph-aware recursive character chunker.
 
 See ingestion/protocols.py for the Chunker Protocol this implements. Character-based, not
-token-based - a hand-rolled implementation with no tokenizer/framework dependency for this step
-(see docs/ARCHITECTURE.md Open Decisions; revisit if evaluation shows token-based chunking
-matters). Prefers to split on paragraph boundaries, falling back to sentence and then word
-boundaries only when a unit doesn't fit in one chunk on its own - a chunk is never split in the
-middle of a word.
+token-based - a hand-rolled implementation with no tokenizer/framework dependency for now;
+revisit if evaluation shows token-based chunking matters. Prefers to split on paragraph
+boundaries, falling back to sentence and then word boundaries only when a unit doesn't fit in
+one chunk on its own - a chunk is never split in the middle of a word.
 """
 
 from __future__ import annotations
@@ -31,7 +30,7 @@ class RecursiveCharacterChunker(Chunker):
         if chunk_overlap > chunk_size // 2:
             # A larger overlap silently multiplies chunk count (near one-word-per-chunk at the
             # extreme) with no error signal - fail fast instead, since chunk_overlap is a
-            # first-class experimentation variable (docs/ARCHITECTURE.md section 5).
+            # first-class experimentation variable.
             raise ValueError(
                 f"chunk_overlap ({chunk_overlap}) must not exceed half of chunk_size "
                 f"({chunk_size}), got chunk_size // 2 = {chunk_size // 2}"

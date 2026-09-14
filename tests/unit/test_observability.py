@@ -1,4 +1,4 @@
-"""Unit tests for observability (Step 14): structured request logging on POST /query, and that
+"""Unit tests for observability: structured request logging on POST /query, and that
 the app behaves completely normally with LangSmith tracing unconfigured (the default state in
 this environment - no API key, no network calls). Fake Protocol implementations, no real
 models/DB, matching tests/unit/test_api.py's pattern.

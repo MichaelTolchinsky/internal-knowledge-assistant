@@ -1,7 +1,7 @@
 """EmbeddingModel Protocol.
 
-Per docs/CODING-GUIDELINES.md section 3/4: the Protocol lives in its own file, apart from
-concrete implementations, and every implementation must explicitly subclass it.
+The Protocol lives in its own file, apart from concrete implementations, and every
+implementation must explicitly subclass it.
 """
 
 from __future__ import annotations

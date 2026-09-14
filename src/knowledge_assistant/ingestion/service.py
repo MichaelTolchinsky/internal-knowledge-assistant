@@ -1,6 +1,6 @@
-"""Shared ingestion logic: parse -> chunk -> embed -> persist as Document + DocumentChunk rows
-(docs/ARCHITECTURE.md section 3.1). Used by both the seed CLI (seed/seed.py) and the
-evaluation runner (evaluation/runner.py) - one implementation, not one copy per caller.
+"""Shared ingestion logic: parse -> chunk -> embed -> persist as Document + DocumentChunk rows.
+Used by both the seed CLI (seed/seed.py) and the evaluation runner (evaluation/runner.py) - one
+implementation, not one copy per caller.
 """
 
 from __future__ import annotations
@@ -46,9 +46,8 @@ async def ingest_document(
     """Parses, chunks, and embeds one file and persists it as a Document + DocumentChunks.
 
     Idempotent: if a Document with this content's exact sha256 hash already exists, this is a
-    no-op that returns None (matching docs/ARCHITECTURE.md section 3.1: "content_hash is the
-    natural dedupe key" for repeatable ingestion) - it does not re-parse, re-embed, or attempt a
-    duplicate insert.
+    no-op that returns None ("content_hash is the natural dedupe key" for repeatable
+    ingestion) - it does not re-parse, re-embed, or attempt a duplicate insert.
 
     Flushes (not commits) after inserting, so a duplicate-content check later in the same
     session/transaction (e.g. another file in the same ingest_directory call, or a caller

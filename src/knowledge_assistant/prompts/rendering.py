@@ -1,12 +1,11 @@
 """Version-agnostic context rendering: wraps retrieved chunks as labeled, escaped `<document>`
 data blocks.
 
-Per docs/ARCHITECTURE.md section 8 ("treat retrieved text as data, not instructions"): retrieved
-chunk content is untrusted. It's wrapped in labeled `<document>` tags, HTML-escaped via the
-stdlib `html.escape` so a chunk can't break out of its tag with literal `<`/`>`/`"` characters.
-This is a structural mitigation, not a guarantee the model can't be manipulated by cleverly
-worded retrieved text - it makes injection harder to construct and easier to reason about,
-nothing more.
+Retrieved text is treated as data, not instructions: retrieved chunk content is untrusted. It's
+wrapped in labeled `<document>` tags, HTML-escaped via the stdlib `html.escape` so a chunk can't
+break out of its tag with literal `<`/`>`/`"` characters. This is a structural mitigation, not a
+guarantee the model can't be manipulated by cleverly worded retrieved text - it makes injection
+harder to construct and easier to reason about, nothing more.
 
 Shared across prompt template versions (v1, future v2, ...) so this security-load-bearing logic
 is written and verified once, not copy-pasted and potentially weakened per version.

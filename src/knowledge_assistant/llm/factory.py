@@ -2,8 +2,7 @@
 
 Deliberately minimal - a placeholder until the API/composition-root step wires up embeddings/
 retriever the same way. Only "local" is supported right now; Bedrock is a later step, not a
-stub here (see docs/CODING-GUIDELINES.md section 3's "wire concrete implementations in one
-composition point" guidance).
+stub here - concrete implementations get wired in one composition point, not scattered around.
 """
 
 from __future__ import annotations

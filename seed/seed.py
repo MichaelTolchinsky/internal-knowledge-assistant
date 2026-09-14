@@ -6,14 +6,14 @@ knowledge_assistant.ingestion.service.ingest_directory) - re-running never dupli
 
 Layout note: this is a plain top-level script under seed/, not a module inside the
 src/knowledge_assistant/ package (unlike evaluation/runner.py's `python -m
-knowledge_assistant.evaluation.runner` entry point) - matching docs/CODING-GUIDELINES.md
-section 1's layout, which already anticipated `seed/` as a top-level directory (like `docker/`,
-`evaluation/`), not a package. It still follows the same shape as the eval runner's CLI (a
-`main()` + `if __name__ == "__main__":` guard, plain `print()` for human-facing output, real
-Postgres + real embedding model - not something that runs in CI automatically).
+knowledge_assistant.evaluation.runner` entry point) - matching the repo layout convention that
+already anticipated `seed/` as a top-level directory (like `docker/`, `evaluation/`), not a
+package. It still follows the same shape as the eval runner's CLI (a `main()` + `if __name__ ==
+"__main__":` guard, plain `print()` for human-facing output, real Postgres + real embedding
+model - not something that runs in CI automatically).
 
 No seed/documents/ directory: this project's only real document corpus is
-evaluation/seed_docs/ (created for Step 12's evaluation dataset). Duplicating that content into
+evaluation/seed_docs/ (created for the evaluation dataset). Duplicating that content into
 a second seed/documents/ directory would create two copies of "the same 11 docs" that could
 silently drift apart - one directory in a fast-moving repo staying in sync is enough. This
 script instead defaults its source directory to evaluation/seed_docs/, and takes a --source-dir

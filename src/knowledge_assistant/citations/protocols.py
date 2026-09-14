@@ -1,7 +1,7 @@
 """CitationExtractor Protocol.
 
-Per docs/CODING-GUIDELINES.md section 3/4: the Protocol lives in its own file, apart from
-concrete implementations, and every implementation must explicitly subclass it.
+The Protocol lives in its own file, apart from concrete implementations, and every
+implementation must explicitly subclass it.
 
 Kept as a Protocol rather than a bare function because there's a real future alternative worth
 designing for now: today it's regex-matching text markers out of the model's free-form answer;

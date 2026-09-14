@@ -1,10 +1,9 @@
 """v1 prompt template: grounded-answer, citation-aware, abstention-capable.
 
 See prompts/protocols.py for the PromptBuilder Protocol this implements. Hand-rolled string
-building - no templating framework/library needed for a handful of sections (see
-docs/CODING-GUIDELINES.md section 11). Context rendering (chunk escaping/wrapping, the
-empty-chunks fallback) lives in prompts/rendering.py, shared across template versions - only
-this version's instruction wording lives here.
+building - no templating framework/library needed for a handful of sections. Context rendering
+(chunk escaping/wrapping, the empty-chunks fallback) lives in prompts/rendering.py, shared
+across template versions - only this version's instruction wording lives here.
 """
 
 from __future__ import annotations

@@ -1,7 +1,4 @@
-"""Async SQLAlchemy engine/session factory.
-
-Per docs/CODING-GUIDELINES.md section 4: async where the underlying I/O is async-capable.
-"""
+"""Async SQLAlchemy engine/session factory - async where the underlying I/O is async-capable."""
 
 from __future__ import annotations
 

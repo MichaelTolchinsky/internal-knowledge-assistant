@@ -1,8 +1,8 @@
 """SQLAlchemy 2.x models for Document and DocumentChunk.
 
-Matches the conceptual data model in docs/ARCHITECTURE.md section 4. These are persistence
-models only - the framework-free domain types live in knowledge_assistant.domain and are what
-the rest of the app should depend on; storage/ is a boundary, not something imported elsewhere.
+These are persistence models only - the framework-free domain types live in
+knowledge_assistant.domain and are what the rest of the app should depend on; storage/ is a
+boundary, not something imported elsewhere.
 """
 
 from __future__ import annotations

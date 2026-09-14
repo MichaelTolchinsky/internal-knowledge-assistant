@@ -34,7 +34,7 @@ async def test_ingest_seed_docs_persists_all_seed_documents(db_session: AsyncSes
     await ingest_seed_docs(db_session)
 
     count = await _document_count(db_session)
-    # evaluation/seed_docs/ has 11 files as of Step 12/13 - assert a lower bound so this test
+    # evaluation/seed_docs/ currently has 11 files - assert a lower bound so this test
     # doesn't need updating every time a seed doc is added, only if the directory goes empty.
     assert count >= 8
 

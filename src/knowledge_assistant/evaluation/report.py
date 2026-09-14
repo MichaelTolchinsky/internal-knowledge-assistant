@@ -1,7 +1,7 @@
 """Aggregate evaluation report: per-metric scores across a dataset run, plus the exact config
-values used to produce them - per docs/ARCHITECTURE.md section 3.3's "change one variable,
-re-run, compare" workflow, a report is only useful for comparison if it records what config
-(chunk size, top-K, embedding model, ...) it was run with.
+values used to produce them - so a "change one variable, re-run, compare" workflow works, a
+report is only useful for comparison if it records what config (chunk size, top-K, embedding
+model, ...) it was run with.
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ class EvalReport:
     num_answerable: int
     num_unanswerable: int
 
-    # Config the run was made with - see docs/ARCHITECTURE.md section 3.3.
+    # Config the run was made with.
     chunk_size: int
     chunk_overlap: int
     top_k: int

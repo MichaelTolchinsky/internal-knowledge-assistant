@@ -1,6 +1,7 @@
 """Data-integrity tests for the evaluation dataset (evaluation/dataset/v1.jsonl) and the seed
 docs it references (evaluation/seed_docs/). Pure data validation - no RAG pipeline, no model,
-no DB. The evaluation runner that actually scores answers against this dataset is Step 13.
+no DB. The evaluation runner that actually scores answers against this dataset lives
+separately (evaluation/runner.py).
 """
 
 from __future__ import annotations

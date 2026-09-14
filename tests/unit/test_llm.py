@@ -1,9 +1,9 @@
 """Unit tests for LocalLLMClient and get_llm_client.
 
-Loads the real model (no mocking the inference path, same philosophy as Step 5's embedding
-tests) - first run downloads the ~1GB Qwen2.5-0.5B-Instruct model from HuggingFace, cached
-afterward on ~/.cache/huggingface. Module-scoped fixture so the (slow) model load happens once
-for the whole file, not once per test.
+Loads the real model (no mocking the inference path, same philosophy as the embedding tests) -
+first run downloads the ~1GB Qwen2.5-0.5B-Instruct model from HuggingFace, cached afterward on
+~/.cache/huggingface. Module-scoped fixture so the (slow) model load happens once for the whole
+file, not once per test.
 """
 
 from __future__ import annotations

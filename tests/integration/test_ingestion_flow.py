@@ -1,12 +1,11 @@
-"""End-to-end integration test for the ingestion flow (docs/ARCHITECTURE.md section 3.1):
-parse -> chunk -> embed -> persist as Document + DocumentChunk rows, then a capstone check that
-the ingested chunks are actually retrievable via PgVectorRetriever.
+"""End-to-end integration test for the ingestion flow: parse -> chunk -> embed -> persist as
+Document + DocumentChunk rows, then a capstone check that the ingested chunks are actually
+retrievable via PgVectorRetriever.
 
 No fakes here - real parser, real chunker, real embedding model, real Postgres/pgvector, same
-"prove it actually works together" philosophy as Step 10 sub-step 5's real end-to-end query
-test.
+"prove it actually works together" philosophy as the real end-to-end query test.
 
-Step 15: the inline `_ingest` helper this file used to define is gone - it's now the shared
+The inline `_ingest` helper this file used to define is gone - it's now the shared
 `ingestion.service.ingest_document`, also used by evaluation/runner.py and seed/seed.py. Most
 tests below were a clean win to refactor onto it. One test
 (test_reingesting_same_content_violates_content_hash_uniqueness) deliberately still bypasses
@@ -131,10 +130,9 @@ async def test_ingested_chunks_are_retrievable_via_pgvector_retriever(
 async def test_reingesting_same_content_violates_content_hash_uniqueness(
     tmp_path: Path, db_session: AsyncSession
 ) -> None:
-    """docs/ARCHITECTURE.md section 3.1: "content_hash is the natural dedupe key" for
-    idempotent re-ingestion - this proves the unique constraint (uq_documents_content_hash)
-    itself really does reject a second Document row with the same content_hash, rather than
-    silently duplicating data.
+    """content_hash is the natural dedupe key for idempotent re-ingestion - this proves the
+    unique constraint (uq_documents_content_hash) itself really does reject a second Document
+    row with the same content_hash, rather than silently duplicating data.
 
     Deliberately does NOT use ingest_document here (unlike the other tests in this file):
     ingest_document checks for an existing content_hash and skips *before* ever attempting an
