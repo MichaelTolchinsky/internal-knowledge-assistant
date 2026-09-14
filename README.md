@@ -59,15 +59,19 @@ against a baseline.
 
 ## Definition of Done
 
-- Documents can be ingested, chunked, embedded, and stored in pgvector.
-- Questions can be submitted through the API; relevant chunks are retrieved.
-- The LLM generates grounded answers with citations, and abstains when documentation is insufficient.
-- Unit tests cover core deterministic logic; integration tests cover the retrieval path.
-- A versioned evaluation dataset exists and metrics are reproducible; a baseline is recorded and
-  at least one RAG improvement experiment has been run against it.
-- Token/cost and latency are measurable.
-- The app runs locally via Docker Compose, with a repeatable seed process.
-- AWS deployment is optional and can be added afterward.
+- [x] Documents can be ingested, chunked, embedded, and stored in pgvector.
+- [x] Questions can be submitted through the API; relevant chunks are retrieved.
+- [x] The LLM generates grounded answers with citations, and abstains when documentation is
+      insufficient (with a known local-model citation-compliance gap documented in
+      `docs/ARCHITECTURE.md`).
+- [x] Unit tests cover core deterministic logic; integration tests cover the retrieval path.
+- [x] A versioned evaluation dataset exists and metrics are reproducible; a baseline is recorded
+      (`docs/ARCHITECTURE.md` section 12).
+- [ ] At least one RAG improvement experiment has been run against the baseline (change one
+      variable, re-run, compare - not yet done; the baseline itself is recorded).
+- [x] Token/cost and latency are measurable.
+- [x] The app runs locally via Docker Compose, with a repeatable seed process.
+- [ ] AWS deployment is optional and can be added afterward (not started - Step 16).
 
 ## Local Development
 
@@ -88,9 +92,12 @@ Run the full stack (app + postgres) with `docker compose up` from `docker/`.
 
 ## Status
 
-Skeleton, local Postgres/pgvector setup, and the initial Document/DocumentChunk data model are
-in place (Steps 1-3 of the development progression in
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#10-development-progression)). No RAG logic
-(chunking, embeddings, retrieval, prompts, LLM, API) yet - see
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the system design and
-[`AGENTS.md`](AGENTS.md) for how work is planned and executed.
+Steps 1-15 of the development progression are complete (see
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#10-development-progression)): the full RAG
+pipeline (parsing/chunking, local embeddings, pgvector retrieval, prompt construction with
+injection-mitigation, local LLM generation, citation extraction/abstention detection, a FastAPI
+`/query` endpoint, structured logging + optional LangSmith tracing, and a repeatable seed CLI)
+is implemented and covered by unit + integration tests. A first evaluation baseline has been
+recorded (`docs/ARCHITECTURE.md` section 12). Only **Step 16 (optional AWS deployment)**
+remains, not yet started. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the system
+design and [`AGENTS.md`](AGENTS.md) for how work is planned and executed.
