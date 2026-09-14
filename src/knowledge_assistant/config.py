@@ -42,13 +42,23 @@ class Settings(BaseSettings):
     llm_provider: Literal["local"]
     local_llm_model_name: str
 
+    # Observability (optional)
+    # Empty/unset by design (not a "your call" default - see config.py's existing convention:
+    # every field is env-required, .env.example is the single source of defaults, per the
+    # earlier "no raw values baked into source code" hardening). LANGSMITH_API_KEY= (empty) is
+    # the documented "disabled" state - tracing is then fully inert, no error, no warning spam
+    # (see rag_service.py's @traceable usage and dependencies.py's env wiring, and the
+    # empty-string-to-None handling shared with similarity_threshold below).
+    langsmith_api_key: str | None
+
     # Prompts
     prompt_template_version: str
 
-    # pydantic-settings does not coerce an empty .env string to None for Optional[float] fields
-    # (it tries to parse "" as a float and fails). SIMILARITY_THRESHOLD= must still resolve to
-    # None, so normalize the empty string before type validation runs.
-    @field_validator("similarity_threshold", mode="before")
+    # pydantic-settings does not coerce an empty .env string to None for Optional[float]/
+    # Optional[str] fields (for the float case it tries to parse "" as a float and fails; for
+    # the str case "" would otherwise stay a valid-but-empty string instead of None).
+    # SIMILARITY_THRESHOLD= and LANGSMITH_API_KEY= must both still resolve to None.
+    @field_validator("similarity_threshold", "langsmith_api_key", mode="before")
     @classmethod
     def _empty_string_to_none(cls, value: object) -> object:
         return None if value == "" else value

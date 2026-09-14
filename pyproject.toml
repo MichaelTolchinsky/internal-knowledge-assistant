@@ -21,6 +21,7 @@ dependencies = [
     "sentence-transformers>=3.3",
     "transformers>=4.46",
     "torch>=2.5",
+    "langsmith>=0.12",
 ]
 
 [dependency-groups]

@@ -213,7 +213,7 @@ infrastructure until an optional deployment phase is explicitly greenlit.
 - [x] 11. Tests (unit + integration)
 - [x] 12. Evaluation dataset
 - [x] 13. Evaluation runner
-- [ ] 14. Observability (structured logging + LangSmith)
+- [x] 14. Observability (structured logging + LangSmith)
 - [ ] 15. Seed service
 - [ ] 16. Optional AWS deployment (CDK; Floci for local AWS emulation if/when needed)
 

@@ -18,6 +18,8 @@ instance.
 
 from __future__ import annotations
 
+import os
+
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,6 +40,17 @@ _embedding_model = HuggingFaceEmbeddingModel()
 _llm_client = get_llm_client(settings)
 _prompt_builder = PromptBuilderV1()
 _citation_extractor = TextCitationExtractor()
+
+# Optional LangSmith tracing (docs/ARCHITECTURE.md section 7). The `@traceable` decorator on
+# RAGService.answer_question_with_trace is always present in the source (see rag_service.py) -
+# it's a no-op with zero network calls whenever LangSmith's own env-based check
+# (`langsmith.utils.tracing_is_enabled()`, reads LANGSMITH_TRACING/LANGSMITH_API_KEY) says
+# tracing is off, which is exactly the state when settings.langsmith_api_key is unset - the
+# default/expected case in this environment. `setdefault` so an operator's own real env vars
+# (if already exported) aren't clobbered by this settings-derived wiring.
+if settings.langsmith_api_key:
+    os.environ.setdefault("LANGSMITH_TRACING", "true")
+    os.environ.setdefault("LANGSMITH_API_KEY", settings.langsmith_api_key)
 
 
 def get_embedding_model() -> EmbeddingModel:

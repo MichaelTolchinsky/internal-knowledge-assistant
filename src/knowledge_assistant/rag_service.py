@@ -3,13 +3,18 @@
 
 Per docs/CODING-GUIDELINES.md section 2: this module contains no HTTP concerns, no SQL, and no
 Bedrock/transformers SDK calls itself - it composes the Protocols only. Concrete
-implementations are wired in by the caller (see dependencies.py), never imported here.
+implementations are wired in by the caller (see dependencies.py), never imported here. The one
+deliberate exception is `langsmith.traceable` below (Step 14, observability) - a cross-cutting
+instrumentation decorator, not a business dependency, so it's applied directly here rather than
+injected like the Protocols are.
 """
 
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+
+from langsmith import traceable
 
 from knowledge_assistant.citations.protocols import CitationExtractor
 from knowledge_assistant.config import settings
@@ -64,10 +69,19 @@ class RAGService:
         trace = await self.answer_question_with_trace(question)
         return trace.answer
 
+    @traceable(name="RAGService.answer_question_with_trace", run_type="chain")
     async def answer_question_with_trace(self, question: str) -> QueryTrace:
         """Same pipeline as answer_question, but also returns the retrieved chunks, the raw
         LLMResponse (token counts), and latency broken down by stage - the API route doesn't
-        need this, the evaluation runner does."""
+        need this, the evaluation runner does.
+
+        Wrapped in `@traceable`: a no-op with zero network calls unless LangSmith tracing is
+        actually enabled (settings.langsmith_api_key configured - see dependencies.py). Verified
+        directly against the installed langsmith SDK, not assumed from docs: with no
+        LANGSMITH_TRACING/LANGSMITH_API_KEY env vars set,
+        `langsmith.utils.tracing_is_enabled()` returns False and the decorator short-circuits
+        to a plain passthrough call, sync or async, with no import errors or attempted requests.
+        """
         total_start = time.perf_counter()
         query_embedding = (await self._embedding_model.embed([question]))[0]
 
