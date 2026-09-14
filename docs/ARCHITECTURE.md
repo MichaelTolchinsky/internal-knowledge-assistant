@@ -211,7 +211,7 @@ infrastructure until an optional deployment phase is explicitly greenlit.
 - [x] 9. Citations
 - [x] 10. API
 - [x] 11. Tests (unit + integration)
-- [ ] 12. Evaluation dataset
+- [x] 12. Evaluation dataset
 - [ ] 13. Evaluation runner
 - [ ] 14. Observability (structured logging + LangSmith)
 - [ ] 15. Seed service
