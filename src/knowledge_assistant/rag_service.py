@@ -8,9 +8,12 @@ implementations are wired in by the caller (see dependencies.py), never imported
 
 from __future__ import annotations
 
+import time
+from dataclasses import dataclass
+
 from knowledge_assistant.citations.protocols import CitationExtractor
 from knowledge_assistant.config import settings
-from knowledge_assistant.domain import Answer
+from knowledge_assistant.domain import Answer, LLMResponse, RetrievedChunk
 from knowledge_assistant.embeddings.protocols import EmbeddingModel
 from knowledge_assistant.llm.protocols import LLMClient
 from knowledge_assistant.prompts.protocols import PromptBuilder
@@ -21,6 +24,22 @@ from knowledge_assistant.retrieval.protocols import Retriever
 # a future `settings.llm_max_tokens` field if/when it needs to be tuned per the evaluation
 # experiment workflow (docs/CODING-GUIDELINES.md section 6).
 _DEFAULT_MAX_TOKENS = 512
+
+
+@dataclass(frozen=True, slots=True)
+class QueryTrace:
+    """Diagnostic detail behind one answer_question call: the Answer plus the intermediate
+    chunks/LLMResponse/timings that produced it. Not a domain type (docs/CODING-GUIDELINES.md
+    section 5's domain types are the core RAG output shape) - this is orchestration-level
+    diagnostic detail, used by the Step 13 evaluation runner to score retrieval quality,
+    groundedness, latency, and cost without duplicating RAGService's own orchestration logic
+    elsewhere (see evaluation/runner.py)."""
+
+    answer: Answer
+    chunks: list[RetrievedChunk]
+    llm_response: LLMResponse
+    retrieval_latency_ms: float
+    total_latency_ms: float
 
 
 class RAGService:
@@ -42,16 +61,35 @@ class RAGService:
         self._citation_extractor = citation_extractor
 
     async def answer_question(self, question: str) -> Answer:
+        trace = await self.answer_question_with_trace(question)
+        return trace.answer
+
+    async def answer_question_with_trace(self, question: str) -> QueryTrace:
+        """Same pipeline as answer_question, but also returns the retrieved chunks, the raw
+        LLMResponse (token counts), and latency broken down by stage - the API route doesn't
+        need this, the evaluation runner does."""
+        total_start = time.perf_counter()
         query_embedding = (await self._embedding_model.embed([question]))[0]
 
         # Empty results (no chunks pass similarity_threshold, or nothing retrieved at all) flow
         # through unchanged - prompt_builder's <no_context> handling (Step 7) already covers an
         # empty chunks list, no special-casing needed here.
+        retrieval_start = time.perf_counter()
         chunks = await self._retriever.search(
             query_embedding, settings.top_k, settings.similarity_threshold
         )
+        retrieval_latency_ms = (time.perf_counter() - retrieval_start) * 1000
 
         prompt = self._prompt_builder.build(question, chunks)
         llm_response = await self._llm_client.generate(prompt, max_tokens=_DEFAULT_MAX_TOKENS)
 
-        return self._citation_extractor.extract(llm_response.answer, chunks)
+        answer = self._citation_extractor.extract(llm_response.answer, chunks)
+        total_latency_ms = (time.perf_counter() - total_start) * 1000
+
+        return QueryTrace(
+            answer=answer,
+            chunks=chunks,
+            llm_response=llm_response,
+            retrieval_latency_ms=retrieval_latency_ms,
+            total_latency_ms=total_latency_ms,
+        )

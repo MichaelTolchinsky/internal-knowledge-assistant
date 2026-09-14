@@ -212,7 +212,7 @@ infrastructure until an optional deployment phase is explicitly greenlit.
 - [x] 10. API
 - [x] 11. Tests (unit + integration)
 - [x] 12. Evaluation dataset
-- [ ] 13. Evaluation runner
+- [x] 13. Evaluation runner
 - [ ] 14. Observability (structured logging + LangSmith)
 - [ ] 15. Seed service
 - [ ] 16. Optional AWS deployment (CDK; Floci for local AWS emulation if/when needed)
@@ -322,4 +322,40 @@ Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) be
   citation/abstention compliance rates for the local provider and compare against Bedrock once
   implemented, or strengthen the prompt (e.g. few-shot examples of the citation format) - do not
   silently assume the local model matches Bedrock-quality instruction-following.
-- Evaluation dataset format and scoring method for "answer correctness" and "groundedness".
+- ~~Evaluation dataset format and scoring method for "answer correctness" and
+  "groundedness".~~ **Resolved (Step 12/13):** dataset is `evaluation/dataset/v1.jsonl` (57
+  questions, JSONL, schema documented in `evaluation/dataset/README.md`). Scoring: answer
+  correctness is a simple keyword/fact-overlap heuristic against `expected_answer` (>=50% of
+  significant words present) - explicitly not semantic similarity or an LLM-judge, both
+  reasonable future upgrades. Groundedness requires a citation that names the *expected* source
+  specifically, not just any non-hallucinated citation.
+
+## 12. First Baseline Evaluation Run (Step 13, local provider, `Qwen2.5-0.5B-Instruct`)
+
+Run via `python -m knowledge_assistant.evaluation.runner` against the full 57-question dataset
+(44 answerable / 13 unanswerable) and the 11 seed documents:
+
+| Metric | Result | README target | Met? |
+|---|---|---|---|
+| Answer correctness | 79.5% | >= 80% | Essentially met |
+| Recall@5 (source hit rate) | 100.0% | >= 90% | Met |
+| Groundedness (citation names the expected source) | 0.0% | - | **Known gap, see below** |
+| Abstention accuracy | 92.3% | >= 90% | Met |
+| Avg retrieval latency | 4.8 ms | - | - |
+| Avg total latency | 2533.4 ms | - | - |
+| Tokens | 56,496 in / 3,449 out | - | - |
+| Estimated cost | $0.0000 (local provider) | - | Placeholder - meaningful once Bedrock lands |
+
+**Groundedness = 0% is a known, already-documented gap, not a new bug or a scoring error:**
+consistent with the Step 9/10 findings above, the local model gives correct, well-retrieved
+answers (79.5% correctness, 100% recall) but almost never emits the `(source: ..., chunk N)`
+marker the groundedness metric requires - so real citations rarely materialize even though
+retrieval and generation are genuinely working. This is exactly the citation-compliance gap the
+`Answer.citations_missing` signal (Step 9) was built to surface honestly rather than hide behind
+an inflated groundedness number. Revisit per the Step 9/10 open item: strengthen the prompt
+(few-shot citation examples) or compare against Bedrock once implemented, before trusting
+groundedness as a real signal for this provider.
+
+This is the baseline for the "change one variable, re-run, compare" workflow (section 16) -
+future prompt/chunking/model experiments should be compared against these numbers, not run in a
+vacuum.

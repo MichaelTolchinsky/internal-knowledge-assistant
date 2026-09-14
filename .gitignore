@@ -15,3 +15,7 @@ venv/
 
 # OS
 .DS_Store
+
+# Generated evaluation run reports (evaluation/seed_docs/ and evaluation/dataset/ are source
+# data and stay tracked; evaluation/reports/ is runner output).
+evaluation/reports/
