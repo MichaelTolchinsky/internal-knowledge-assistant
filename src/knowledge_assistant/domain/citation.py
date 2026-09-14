@@ -1,7 +1,4 @@
-"""Citation: a single source attribution backing part of an Answer.
-
-Framework-free per docs/CODING-GUIDELINES.md section 5.
-"""
+"""Citation: a single source attribution backing part of an Answer."""
 
 from __future__ import annotations
 

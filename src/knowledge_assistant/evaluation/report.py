@@ -15,8 +15,8 @@ from knowledge_assistant.rag_service import QueryTrace
 
 # Local inference has no meaningful per-token price - there's no API bill for running a model
 # on your own CPU. This is a placeholder, not a real cost calculation: it becomes meaningful
-# once/if a Bedrock LLMClient (Step 8's deferred continuation) is implemented and configured
-# with real per-token pricing for whichever model is selected.
+# once/if a Bedrock LLMClient is implemented and configured with real per-token pricing for
+# whichever model is selected.
 _COST_NOTE_LOCAL = (
     "llm_provider=local: no real per-token cost - local CPU inference has no API bill. "
     "Token counts are still recorded below for when a priced provider (e.g. Bedrock) is used."

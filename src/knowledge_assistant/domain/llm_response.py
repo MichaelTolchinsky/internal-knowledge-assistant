@@ -1,7 +1,4 @@
-"""LLMResponse: the result of one LLM generation call.
-
-Framework-free per docs/CODING-GUIDELINES.md section 5.
-"""
+"""LLMResponse: the result of one LLM generation call."""
 
 from __future__ import annotations
 

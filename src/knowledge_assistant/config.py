@@ -37,8 +37,8 @@ class Settings(BaseSettings):
     bedrock_region: str
 
     # LLM (local/CPU)
-    # "local" is the only supported value for now - Bedrock support (Step 8 continuation) isn't
-    # implemented yet, so selecting it must fail loudly (see llm/factory.py), not silently.
+    # "local" is the only supported value for now - Bedrock support isn't implemented yet, so
+    # selecting it must fail loudly (see llm/factory.py), not silently.
     llm_provider: Literal["local"]
     local_llm_model_name: str
 

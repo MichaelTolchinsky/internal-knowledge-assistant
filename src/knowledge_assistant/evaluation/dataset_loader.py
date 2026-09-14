@@ -2,9 +2,8 @@
 
 Distinct from src/knowledge_assistant/evaluation/ (this package - eval CODE: loader, metrics,
 runner) vs the top-level evaluation/ directory (eval DATA: seed docs + dataset file) - see
-evaluation/dataset/README.md's "Layout choice" section for the full reasoning from Step 12. This
-loader reads from that top-level evaluation/dataset/ directory; it is not itself where the data
-lives.
+evaluation/dataset/README.md's "Layout choice" section for the full reasoning. This loader
+reads from that top-level evaluation/dataset/ directory; it is not itself where the data lives.
 """
 
 from __future__ import annotations

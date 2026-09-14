@@ -127,7 +127,7 @@ def retrieval_hit(chunks: list[RetrievedChunk], expected_sources: list[str]) -> 
 def groundedness(answer: Answer, expected_sources: list[str]) -> bool:
     """Did the answer's citations actually reference the expected source document?
 
-    TextCitationExtractor (Step 9) already drops any citation marker that doesn't match a real
+    TextCitationExtractor already drops any citation marker that doesn't match a real
     retrieved chunk - so every Citation in answer.citations is, by construction, non-hallucinated
     (it necessarily points at a chunk that was genuinely retrieved). This metric checks one
     level further: not just "is this citation real", but "does it point at the document this

@@ -1,9 +1,9 @@
 """Evaluation runner: ingest seed docs (idempotent), run every dataset row through RAGService,
 score with evaluation/metrics.py, and assemble an EvalReport.
 
-Ingestion itself is not implemented here - it delegates to ingestion/service.py (Step 15),
-shared with the seed CLI (seed/seed.py) and tests/integration/test_ingestion_flow.py, rather
-than maintaining its own copy of the parse -> chunk -> embed -> persist logic.
+Ingestion itself is not implemented here - it delegates to ingestion/service.py, shared with
+the seed CLI (seed/seed.py) and tests/integration/test_ingestion_flow.py, rather than
+maintaining its own copy of the parse -> chunk -> embed -> persist logic.
 """
 
 from __future__ import annotations

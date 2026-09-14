@@ -1,12 +1,8 @@
-"""RAG service orchestrator: the query-time pipeline from docs/ARCHITECTURE.md section 3.2
-(question -> embedding -> retrieval -> prompt -> LLM -> citations -> Answer).
+"""RAG service orchestrator: question -> embedding -> retrieval -> prompt -> LLM -> citations.
 
-Per docs/CODING-GUIDELINES.md section 2: this module contains no HTTP concerns, no SQL, and no
-Bedrock/transformers SDK calls itself - it composes the Protocols only. Concrete
-implementations are wired in by the caller (see dependencies.py), never imported here. The one
-deliberate exception is `langsmith.traceable` below (Step 14, observability) - a cross-cutting
-instrumentation decorator, not a business dependency, so it's applied directly here rather than
-injected like the Protocols are.
+Contains no HTTP, SQL, or SDK calls - it only composes the Protocols, wired in by the caller
+(see dependencies.py). Exception: `langsmith.traceable` below is applied directly since it's
+cross-cutting instrumentation, not a business dependency.
 """
 
 from __future__ import annotations
@@ -24,21 +20,14 @@ from knowledge_assistant.llm.protocols import LLMClient
 from knowledge_assistant.prompts.protocols import PromptBuilder
 from knowledge_assistant.retrieval.protocols import Retriever
 
-# No config field for this yet (checked config.py/.env.example - neither has one). Hardcoded
-# here as a reasonable default for a grounded, citation-aware paragraph answer; a candidate for
-# a future `settings.llm_max_tokens` field if/when it needs to be tuned per the evaluation
-# experiment workflow (docs/CODING-GUIDELINES.md section 6).
+# No config field for this yet - a candidate for settings.llm_max_tokens later.
 _DEFAULT_MAX_TOKENS = 512
 
 
 @dataclass(frozen=True, slots=True)
 class QueryTrace:
-    """Diagnostic detail behind one answer_question call: the Answer plus the intermediate
-    chunks/LLMResponse/timings that produced it. Not a domain type (docs/CODING-GUIDELINES.md
-    section 5's domain types are the core RAG output shape) - this is orchestration-level
-    diagnostic detail, used by the Step 13 evaluation runner to score retrieval quality,
-    groundedness, latency, and cost without duplicating RAGService's own orchestration logic
-    elsewhere (see evaluation/runner.py)."""
+    """One answer_question call's Answer plus the chunks/LLMResponse/timings behind it - used
+    by the evaluation runner to score retrieval quality, groundedness, latency, and cost."""
 
     answer: Answer
     chunks: list[RetrievedChunk]
@@ -48,8 +37,7 @@ class QueryTrace:
 
 
 class RAGService:
-    """Orchestrates one question -> Answer round trip. Holds no HTTP/SQL/SDK code - every
-    external boundary is a Protocol, injected by the caller (see dependencies.py)."""
+    """Orchestrates one question -> Answer round trip via injected Protocols."""
 
     def __init__(
         self,
@@ -71,23 +59,16 @@ class RAGService:
 
     @traceable(name="RAGService.answer_question_with_trace", run_type="chain")
     async def answer_question_with_trace(self, question: str) -> QueryTrace:
-        """Same pipeline as answer_question, but also returns the retrieved chunks, the raw
-        LLMResponse (token counts), and latency broken down by stage - the API route doesn't
-        need this, the evaluation runner does.
+        """Same pipeline as answer_question, plus the retrieved chunks, raw LLMResponse, and
+        per-stage latency - used by the evaluation runner, not the API route.
 
-        Wrapped in `@traceable`: a no-op with zero network calls unless LangSmith tracing is
-        actually enabled (settings.langsmith_api_key configured - see dependencies.py). Verified
-        directly against the installed langsmith SDK, not assumed from docs: with no
-        LANGSMITH_TRACING/LANGSMITH_API_KEY env vars set,
-        `langsmith.utils.tracing_is_enabled()` returns False and the decorator short-circuits
-        to a plain passthrough call, sync or async, with no import errors or attempted requests.
+        `@traceable` is a no-op with no network calls unless LangSmith tracing is enabled
+        (settings.langsmith_api_key set - see dependencies.py); verified against the SDK.
         """
         total_start = time.perf_counter()
         query_embedding = (await self._embedding_model.embed([question]))[0]
 
-        # Empty results (no chunks pass similarity_threshold, or nothing retrieved at all) flow
-        # through unchanged - prompt_builder's <no_context> handling (Step 7) already covers an
-        # empty chunks list, no special-casing needed here.
+        # Empty chunks flow through unchanged - prompt_builder already handles that case.
         retrieval_start = time.perf_counter()
         chunks = await self._retriever.search(
             query_embedding, settings.top_k, settings.similarity_threshold

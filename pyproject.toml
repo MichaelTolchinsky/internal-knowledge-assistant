@@ -49,6 +49,7 @@ markers = [
     "unit: deterministic, no external services",
     "integration: requires local Postgres/pgvector",
     "evaluation: runs the eval dataset against the real pipeline",
+    "requires_real_llm: needs a real (non-tiny/test) local LLM to produce meaningful output",
 ]
 timeout = 60
 

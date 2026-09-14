@@ -1,7 +1,7 @@
 """Document: a single ingested source document (before chunking).
 
-Framework-free per docs/CODING-GUIDELINES.md section 5 - no FastAPI/SQLAlchemy dependency here,
-so core RAG logic can be tested without the API or DB layers.
+No FastAPI/SQLAlchemy dependency here, so core RAG logic can be tested without the API or DB
+layers.
 """
 
 from __future__ import annotations

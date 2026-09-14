@@ -84,6 +84,7 @@ def client(db_session: AsyncSession) -> Generator[TestClient]:
 
 
 @pytest.mark.integration
+@pytest.mark.requires_real_llm
 def test_query_answerable_question_returns_grounded_answer(
     client: TestClient, seeded_documents: None
 ) -> None:
@@ -95,6 +96,10 @@ def test_query_answerable_question_returns_grounded_answer(
     answers but does not reliably include the "(source: ..., chunk N)" marker. citations_missing
     correctly reflects that when it happens - this test does not require citations to be
     present, but validates them if the model did include any.
+
+    requires_real_llm: needs an actually-trained model to produce a factually correct answer -
+    a tiny/random-weight test model (e.g. used to keep CI fast) can't pass this, so CI excludes
+    this marker; local full-suite runs still exercise it against the real model.
     """
     start = time.perf_counter()
     response = client.post("/query", json={"question": "What is the API rate limit?"})

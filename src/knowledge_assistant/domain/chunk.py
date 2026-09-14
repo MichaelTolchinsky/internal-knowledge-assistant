@@ -1,7 +1,4 @@
-"""DocumentChunk: one chunk of a Document, with its embedding.
-
-Framework-free per docs/CODING-GUIDELINES.md section 5.
-"""
+"""DocumentChunk: one chunk of a Document, with its embedding."""
 
 from __future__ import annotations
 

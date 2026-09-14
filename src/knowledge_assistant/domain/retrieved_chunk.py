@@ -1,7 +1,6 @@
 """RetrievedChunk: a DocumentChunk returned from vector search, with its similarity score.
 
-Framework-free per docs/CODING-GUIDELINES.md section 5. Carries what a citation later needs
-(FR3: document name, document id, chunk id, relevant text).
+Carries what a citation later needs: document name, document id, chunk id, relevant text.
 """
 
 from __future__ import annotations

@@ -15,7 +15,7 @@ from knowledge_assistant.storage.models import DocumentChunkModel, DocumentModel
 
 class PgVectorRetriever(Retriever):
     """Vector similarity search over document_chunks via pgvector's cosine distance operator
-    (matches the HNSW index's vector_cosine_ops from Step 3)."""
+    (matches the HNSW index's vector_cosine_ops on the embedding column)."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session

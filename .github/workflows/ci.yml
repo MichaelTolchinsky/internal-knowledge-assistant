@@ -1,0 +1,129 @@
+name: CI
+
+# Two separate jobs: lint (fast, no DB) runs first and gates test (needs postgres). The test
+# job uses a tiny random-weight test LLM (yujiepan/qwen2.5-tiny-random, ~16MB) instead of the
+# real Qwen2.5-0.5B-Instruct (~1GB) - fast to download, no caching needed. Production defaults
+# in .env.example/config.py are untouched; this override only applies in this job's env.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install project (with dev deps)
+        run: |
+          pip install -e ".[dev]" 2>/dev/null || { pip install -e .; pip install pytest pytest-asyncio pytest-timeout httpx ruff pre-commit alembic; }
+
+      - name: ruff check
+        run: ruff check src tests migrations seed
+
+      - name: ruff format --check
+        run: ruff format --check src tests migrations seed
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: knowledge_assistant
+          POSTGRES_PASSWORD: knowledge_assistant
+          POSTGRES_DB: knowledge_assistant
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U knowledge_assistant -d knowledge_assistant"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Individual pieces, not a single connection-string literal - DATABASE_URL is assembled
+      # at runtime in the "Build DATABASE_URL" step below. Same names libpq/psycopg read
+      # automatically, so the "Enable pgvector extension" step needs no explicit credentials.
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: knowledge_assistant
+      PGPASSWORD: knowledge_assistant
+      PGDATABASE: knowledge_assistant
+      EMBEDDING_MODEL_NAME: sentence-transformers/all-MiniLM-L6-v2
+      EMBEDDING_DIMENSION: "384"
+      CHUNK_SIZE: "800"
+      CHUNK_OVERLAP: "100"
+      TOP_K: "5"
+      SIMILARITY_THRESHOLD: ""
+      BEDROCK_MODEL_ID: anthropic.claude-3-haiku-20240307-v1:0
+      BEDROCK_REGION: us-east-1
+      LLM_PROVIDER: local
+      # Tiny random-weight test model - CI only, never used in production (see module comment).
+      LOCAL_LLM_MODEL_NAME: yujiepan/qwen2.5-tiny-random
+      PROMPT_TEMPLATE_VERSION: v1
+      LANGSMITH_API_KEY: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install project (with dev deps)
+        run: |
+          pip install -e ".[dev]" 2>/dev/null || { pip install -e .; pip install pytest pytest-asyncio pytest-timeout httpx ruff pre-commit alembic; }
+
+      - name: Build DATABASE_URL
+        run: |
+          python -c "
+          import os
+          user = os.environ['PGUSER']
+          pw = os.environ['PGPASSWORD']
+          host = os.environ['PGHOST']
+          port = os.environ['PGPORT']
+          db = os.environ['PGDATABASE']
+          url = 'postgresql+psycopg://' + user + ':' + pw + '@' + host + ':' + port + '/' + db
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write('DATABASE_URL=' + url + chr(10))
+          "
+
+      - name: Enable pgvector extension
+        # No docker-entrypoint-initdb.d equivalent for a `services:` container - the extension
+        # binary ships in the pgvector/pgvector image, it just needs CREATE EXTENSION run once,
+        # same statement as docker/init-db/001-enable-pgvector.sql. psycopg.connect() with no
+        # args reads the standard PG* env vars set on this job automatically.
+        run: |
+          python -c "
+          import psycopg
+          conn = psycopg.connect()
+          conn.autocommit = True
+          conn.execute('CREATE EXTENSION IF NOT EXISTS vector;')
+          conn.close()
+          "
+
+      - name: Run migrations
+        run: alembic upgrade head
+
+      # Separate from migrations on purpose: proves the seed CLI itself works end-to-end in a
+      # clean environment, independent of whether the test suite needs the seeded data (it
+      # seeds its own small fixtures per test).
+      - name: Run seed
+        run: python seed/seed.py
+
+      - name: Run tests
+        # requires_real_llm tests need actually-trained model output (e.g. a specific fact in
+        # the answer) - the tiny test model above has random weights and can't produce that.
+        run: pytest tests/ -q -m "not requires_real_llm"

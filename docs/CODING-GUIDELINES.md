@@ -63,6 +63,7 @@ Bedrock client vs a fake for tests) without inheritance coupling.
 # embeddings/protocol.py
 from typing import Protocol
 
+
 class EmbeddingModel(Protocol):
     """Turns text into a fixed-dimension vector. Query and document text must use the
     same implementation/model so vectors are comparable."""
@@ -77,6 +78,7 @@ class EmbeddingModel(Protocol):
 from typing import Protocol
 from knowledge_assistant.domain import RetrievedChunk
 
+
 class Retriever(Protocol):
     def search(self, query_embedding: list[float], top_k: int) -> list[RetrievedChunk]: ...
 ```
@@ -85,6 +87,7 @@ class Retriever(Protocol):
 # prompts/protocol.py
 from typing import Protocol
 from knowledge_assistant.domain import RetrievedChunk
+
 
 class PromptBuilder(Protocol):
     """Owns template + version + safety wrapping. Retrieved chunk text is untrusted content -
@@ -99,6 +102,7 @@ class PromptBuilder(Protocol):
 # llm/protocol.py
 from typing import Protocol
 from knowledge_assistant.domain import LLMResponse
+
 
 class LLMClient(Protocol):
     async def generate(self, prompt: str, *, max_tokens: int) -> LLMResponse: ...

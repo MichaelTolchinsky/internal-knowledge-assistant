@@ -1,11 +1,7 @@
 """FastAPI application entrypoint.
 
-`/health` for boot checks, `/query` for the core RAG flow (see docs/ARCHITECTURE.md section 6).
-Route handlers stay thin - request -> RAGService.answer_question_with_trace() -> structured log
--> response mapping only, no business logic here (that lives in rag_service.py) per
-docs/CODING-GUIDELINES.md section 2's separation of concerns. Structured request logging (Step
-14, observability) lives here rather than in rag_service.py for the same reason: it's an HTTP-
-layer/request concern (request_id), not RAG orchestration logic.
+`/health` for boot checks, `/query` for the core RAG flow. Route handlers stay thin - request
+-> RAGService -> log -> response mapping only; business logic lives in rag_service.py.
 """
 
 from __future__ import annotations
@@ -36,9 +32,7 @@ def get_rag_service(
     llm_client: LLMClient = Depends(dependencies.get_llm_client_singleton),
     citation_extractor: CitationExtractor = Depends(dependencies.get_citation_extractor),
 ) -> RAGService:
-    """Per-request RAGService, composed from the singletons/per-request deps in
-    dependencies.py. Chains get_retriever (itself Depends-based, per-request AsyncSession)
-    alongside the process-lifetime singletons."""
+    """Per-request RAGService, composed from dependencies.py's singletons/per-request deps."""
     return RAGService(embedding_model, retriever, prompt_builder, llm_client, citation_extractor)
 
 
@@ -51,22 +45,14 @@ async def health() -> dict[str, str]:
 async def query(
     request: QueryRequest, rag_service: RAGService = Depends(get_rag_service)
 ) -> QueryResponse:
-    # Vanilla FastAPI/Starlette has no built-in per-request ID (verified - Request/Response
-    # carry nothing like this by default), so one is generated here per docs/ARCHITECTURE.md
-    # section 7's "request ID" tracking requirement.
+    # FastAPI has no built-in per-request ID, so generate one for structured logging.
     request_id = str(uuid.uuid4())
 
     trace = await rag_service.answer_question_with_trace(request.question)
     answer = trace.answer
 
-    # One structured log line per successful request, per docs/ARCHITECTURE.md section 7:
-    # request ID, question, retrieved chunk IDs, retrieval latency, model, token usage, LLM
-    # latency, total latency. `extra=` keeps these as real structured fields on the LogRecord
-    # (parseable by a log processor/JSON formatter), not smashed into an f-string - trace only
-    # exposes retrieval_latency_ms and total_latency_ms (not a separate LLM-only latency), so
-    # total_latency_ms stands in for "LLM latency" here (retrieval + embed + LLM combined minus
-    # the already-reported retrieval_latency_ms leaves LLM+embed, but that split isn't tracked
-    # separately - see rag_service.py's QueryTrace).
+    # One structured log line per request - `extra=` keeps fields queryable, not smashed into
+    # a string. total_latency_ms stands in for "LLM latency" (not tracked separately).
     logger.info(
         "query completed: request_id=%s abstained=%s citations_missing=%s",
         request_id,

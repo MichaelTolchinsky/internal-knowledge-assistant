@@ -31,7 +31,9 @@ Learn and demonstrate, hands-on:
 
 Full detail lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Coding conventions live in
 [`docs/CODING-GUIDELINES.md`](docs/CODING-GUIDELINES.md). Agent/contributor roles and process
-live in [`AGENTS.md`](AGENTS.md).
+live in [`AGENTS.md`](AGENTS.md). The real bugs found and fixed during development (with full
+specifics, not just current-state architecture) are recorded in
+[`docs/ENGINEERING-LOG.md`](docs/ENGINEERING-LOG.md).
 
 ## Non-Goals
 
@@ -73,6 +75,55 @@ against a baseline.
 - [x] The app runs locally via Docker Compose, with a repeatable seed process.
 - [ ] AWS deployment is optional and can be added afterward (not started - Step 16).
 
+## Quick Start
+
+With the stack running (`docker compose up` from `docker/`, or `uvicorn
+knowledge_assistant.api.main:app` locally against a running Postgres) and the seed corpus
+ingested (`python seed/seed.py`), ask a real question from the evaluation dataset
+(`evaluation/dataset/v1.jsonl`):
+
+```bash
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is the default API rate limit?"}'
+```
+
+```json
+{
+  "answer": "The default API rate limit for a single API key is 100 requests per minute. For enterprise plans, the rate limit can be increased to 500 requests per minute.",
+  "citations": [],
+  "abstained": false,
+  "citations_missing": true
+}
+```
+
+This is a real, representative response shape from the local provider (`Qwen2.5-0.5B-Instruct`)
+- note `citations: []` and `citations_missing: true` even though the answer is factually
+correct: the local model's known citation-marker compliance gap (see "Evaluation Results" below)
+means it usually gets the *content* right without including the `(source: ..., chunk N)`
+markers the prompt asks for. `citations_missing` exists precisely to surface that honestly
+rather than hide it behind a misleading `abstained` flag.
+
+## Evaluation Results
+
+Baseline run (full detail in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#12-first-baseline-evaluation-run-local-provider-qwen25-05b-instruct),
+57-question dataset, 11 seed documents, local provider):
+
+| Metric | Result | Target | Met? |
+|---|---|---|---|
+| Answer correctness | **79.5%** | >= 80% | Essentially met |
+| Recall@5 (source hit rate) | **100.0%** | >= 90% | ✅ Met |
+| Abstention accuracy | **92.3%** | >= 90% | ✅ Met |
+| Groundedness (citation names the expected source) | **0.0%** | - | ⚠️ Known gap - see below |
+
+**Why groundedness is 0%, honestly:** the local model gives correct, well-retrieved answers
+(hence the strong correctness/recall numbers) but almost never includes the citation-marker
+format the prompt instructs - a documented, investigated instruction-following limitation of
+this specific small local model, not a bug in retrieval, prompting, or citation extraction (all
+verified working end-to-end). See `docs/ARCHITECTURE.md`'s Open Decisions for the full
+reasoning.
+
 ## Local Development
 
 Requires Python 3.14+ and Docker.
@@ -81,12 +132,18 @@ Requires Python 3.14+ and Docker.
 cp .env.example .env
 python3.14 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]" 2>/dev/null || { pip install -e .; pip install pytest pytest-asyncio pytest-timeout httpx ruff pre-commit alembic; }
+pre-commit install --install-hooks -t pre-commit -t commit-msg
 
 cd docker && docker compose up -d postgres && cd ..
 alembic upgrade head
 
 pytest tests/
 ```
+
+`pre-commit install` wires up git hooks that auto-run `ruff check --fix` + `ruff format` (plus
+basic hygiene checks and a Conventional Commits message check) on every commit - see
+`.pre-commit-config.yaml`. CI (`.github/workflows/ci.yml`) runs the same lint checks in a
+separate `lint` job, so a bad commit still gets caught even if hooks are skipped locally.
 
 Run the full stack (app + postgres) with `docker compose up` from `docker/`.
 

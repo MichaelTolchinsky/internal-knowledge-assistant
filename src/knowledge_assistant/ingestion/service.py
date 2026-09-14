@@ -1,7 +1,6 @@
 """Shared ingestion logic: parse -> chunk -> embed -> persist as Document + DocumentChunk rows
-(docs/ARCHITECTURE.md section 3.1). Extracted in Step 15 from what was previously duplicated
-inline in tests/integration/test_ingestion_flow.py and evaluation/runner.py - both now call
-these functions instead of maintaining their own copy.
+(docs/ARCHITECTURE.md section 3.1). Used by both the seed CLI (seed/seed.py) and the
+evaluation runner (evaluation/runner.py) - one implementation, not one copy per caller.
 """
 
 from __future__ import annotations

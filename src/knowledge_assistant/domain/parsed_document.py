@@ -1,7 +1,4 @@
-"""ParsedDocument: the output of parsing a raw source file, before chunking.
-
-Framework-free per docs/CODING-GUIDELINES.md section 5.
-"""
+"""ParsedDocument: the output of parsing a raw source file, before chunking."""
 
 from __future__ import annotations
 
