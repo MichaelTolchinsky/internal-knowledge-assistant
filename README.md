@@ -23,7 +23,7 @@ This project focuses on hands-on exploration of ingestion, embeddings, pgvector 
 | **Data Persistence** | SQLAlchemy 2.x (Async) + Alembic | Asynchronous relational schema management and migrations |
 | **Testing & Quality**| Pytest + Ruff | Unit/integration testing and fast linting/formatting |
 
-*Public Hugging Face models download automatically on first use, cache locally under `~/.cache/huggingface/`, and require no API keys or accounts.*
+*These public models download on first use through the Hugging Face libraries, are cached by default under `~/.cache/huggingface/hub/`, and do not require an API token or Hugging Face account.*
 
 ## Quick Start
 
@@ -112,8 +112,6 @@ The local RAG system is fully implemented and operational locally.
 
 - **System Design & Flow:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - **Coding Standards & Protocols:** [`docs/CODING-GUIDELINES.md`](docs/CODING-GUIDELINES.md)
-- **Bug Postmortems & History:** [`docs/ENGINEERING-LOG.md`](docs/ENGINEERING-LOG.md)
-- **Contributor & Agent Workflow:** [`AGENTS.md`](AGENTS.md)
 - **Evaluation Dataset Specification:** [`evaluation/dataset/README.md`](evaluation/dataset/README.md)
 
 ## License
