@@ -209,7 +209,7 @@ infrastructure until an optional deployment phase is explicitly greenlit.
 - [x] 8. LLM generation - local provider (`LLMClient` abstraction, `LocalLLMClient` via
       transformers). **Bedrock provider deferred** - see Open Decisions below.
 - [x] 9. Citations
-- [ ] 10. API
+- [x] 10. API
 - [ ] 11. Tests (unit + integration)
 - [ ] 12. Evaluation dataset
 - [ ] 13. Evaluation runner
@@ -306,15 +306,19 @@ Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) be
   `citations_missing` means "zero valid citations AND no phrase match" (the previously-
   ambiguous case) - kept as two plain booleans rather than a 3-way enum, since the two
   conditions are independent checks, not mutually exclusive states.
-- **Open item surfaced by the Step 9 fix-pass re-verification, not yet resolved:**
-  `Qwen/Qwen2.5-0.5B-Instruct` (the local LLM chosen in Step 8) frequently does not reliably
-  follow the exact citation-marker format or abstention phrasing instructed in
-  `prompts/v1.py` - confirmed via real end-to-end runs (correct, grounded answers came back
-  with zero citation markers; a forced-empty-context question got a hallucinated answer instead
-  of the instructed `<no_context>`-triggered abstention). This is a genuine small-model
-  instruction-following limitation, not a bug in the citation/abstention detection logic itself
-  (which now correctly reports these cases via `citations_missing` rather than mislabeling them
-  as `abstained`). Revisit when running the Step 12/13 evaluation dataset: either accept lower
+- **Open item surfaced by the Step 9 fix-pass re-verification, confirmed again in Step 10's
+  real end-to-end API test, not yet resolved:** `Qwen/Qwen2.5-0.5B-Instruct` (the local LLM
+  chosen in Step 8) frequently does not reliably follow the exact citation-marker format or
+  abstention phrasing instructed in `prompts/v1.py` - confirmed via real end-to-end runs
+  (correct, grounded answers came back with zero citation markers, reproducibly across multiple
+  phrasings including one explicitly demanding the citation format; a no-relevant-content
+  question got a reasonable "I cannot provide an answer" response but not the exact instructed
+  abstention phrase either). The full `/query` pipeline is otherwise genuinely working
+  end-to-end (real embeddings, retrieval, generation, citation extraction all composing
+  correctly - verified via `tests/integration/test_query_api.py`) - this is specifically a
+  small-model instruction-following gap, not a bug in the citation/abstention detection logic
+  (which correctly reports these cases via `citations_missing` rather than mislabeling them as
+  `abstained`). Revisit when running the Step 12/13 evaluation dataset: either accept lower
   citation/abstention compliance rates for the local provider and compare against Bedrock once
   implemented, or strengthen the prompt (e.g. few-shot examples of the citation format) - do not
   silently assume the local model matches Bedrock-quality instruction-following.
