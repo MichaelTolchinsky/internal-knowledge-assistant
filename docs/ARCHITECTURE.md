@@ -210,7 +210,7 @@ infrastructure until an optional deployment phase is explicitly greenlit.
       transformers). **Bedrock provider deferred** - see Open Decisions below.
 - [x] 9. Citations
 - [x] 10. API
-- [ ] 11. Tests (unit + integration)
+- [x] 11. Tests (unit + integration)
 - [ ] 12. Evaluation dataset
 - [ ] 13. Evaluation runner
 - [ ] 14. Observability (structured logging + LangSmith)
