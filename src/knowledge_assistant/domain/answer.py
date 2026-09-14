@@ -12,8 +12,7 @@ boolean - because they answer different questions and are not mutually exclusive
   citations/text_extractor.py for the exact detection logic and why a two-field design (over a
   single 3-way status) was chosen: the two conditions are genuinely independent checks (phrase
   match vs. citation presence), not mutually exclusive states, so a fixed enum of 3
-  combinations would be less expressive than two plain booleans. See docs/ENGINEERING-LOG.md
-  for the real-world investigation that led to this design.
+  combinations would be less expressive than two plain booleans.
 """
 
 from __future__ import annotations

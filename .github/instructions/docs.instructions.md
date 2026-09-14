@@ -10,7 +10,7 @@ Follow [`AGENTS.md`](../../AGENTS.md) for repository change guidelines and opera
 
 1. **Current-State vs Historical Narrative**:
    - `docs/ARCHITECTURE.md` and `README.md` describe the current-state design, components, and workflows.
-   - Investigation logs, bug repros, and historical evolution belong in `docs/ENGINEERING-LOG.md`.
+   - Keep investigation history and bug repros out of current-state architecture descriptions.
    - Never embed chronological step markers ("Step 10", "Step 12 fix-pass") into active architectural descriptions.
 
 2. **Source Code Cleanliness**:

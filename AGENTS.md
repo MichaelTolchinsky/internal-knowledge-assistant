@@ -5,7 +5,6 @@ This file defines process, repository layout, commands, verification standards, 
 
 System design lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 Coding standards live in [`docs/CODING-GUIDELINES.md`](docs/CODING-GUIDELINES.md).
-Historical bugs and postmortems live in [`docs/ENGINEERING-LOG.md`](docs/ENGINEERING-LOG.md).
 
 ## 1. Repository Map
 
@@ -99,7 +98,6 @@ Do not guess when hitting ambiguous choices:
 ## 6. Documentation Synchronization
 
 - Documentation must represent current-state architecture and behavior.
-- Narrative bug histories, investigation journeys, and postmortems belong in `docs/ENGINEERING-LOG.md`, not `docs/ARCHITECTURE.md`.
 - Python docstrings and comments must state technical intent and rationale directly. Never cite document paths (e.g. `docs/ARCHITECTURE.md`, `docs/CODING-GUIDELINES.md`) or historical step numbers (e.g. "Step 5") inside Python source code.
 - Keep links between markdown files relative and verified.
 

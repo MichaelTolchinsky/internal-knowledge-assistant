@@ -1,9 +1,7 @@
 # ARCHITECTURE.md
 
 System design for the Internal Knowledge Assistant - current-state description of the
-architecture as implemented. For the detailed history of real bugs found and fixed during
-development (full specifics, not summarized here), see
-[`ENGINEERING-LOG.md`](ENGINEERING-LOG.md).
+architecture as implemented.
 
 ## 1. Technology Choices & Tradeoffs
 
