@@ -18,8 +18,8 @@ workflow you use to actually write code should be able to follow this process.
   surfaces them as a decision record (see below) instead.
 - **Test** - unit tests, integration tests, edge cases, regression tests, evaluation
   infrastructure. Can be the same actor as Execution for a small task.
-- **Teacher** - see the Learning Gate below. A distinct responsibility even when carried out by
-  whoever is coordinating the work.
+- **Teacher** - see the Learning Gate below (currently disabled). A distinct responsibility even
+  when carried out by whoever is coordinating the work.
 - **Reviewer** - challenges architecture, correctness, AI-specific design (grounding, citations,
   abstention), security, cost, latency, and evaluation quality. Should push back, not
   rubber-stamp.
@@ -37,12 +37,15 @@ mental modes for a single contributor - the process is the same either way.
    marking an acceptance criterion done.
 5. Review (tests, lint, and a focused code review pass) before merging.
 
-## Mandatory Learning Gate
+## Learning Gate (currently disabled for velocity)
 
-**Learning is the primary goal of this project.** Coding agents increase implementation speed
-but must not replace the developer's understanding.
+**Learning was the primary goal of this project early on**, and the process below was run after
+every major step through Step 10 (API). It's now disabled by explicit developer decision, to
+prioritize implementation speed over the Socratic teaching loop. This section is left intact
+(not deleted) so it can be re-enabled later if the learning-first pace is worth resuming - it is
+not currently enforced.
 
-After every major implementation step, before starting the next one:
+The process, if re-enabled: after every major implementation step, before starting the next one:
 
 1. Explain the concept behind what was just implemented.
 2. Ask questions about it (Socratic, not just "did you get it?").
@@ -52,8 +55,7 @@ After every major implementation step, before starting the next one:
 6. Only then move on to the next major step.
 
 For each major component, be able to explain: what it does, why it exists, how it works, what
-alternatives exist, why the chosen approach was picked, and what its limitations are. If not,
-the step isn't complete - regardless of whether the code works.
+alternatives exist, why the chosen approach was picked, and what its limitations are.
 
 Prefer this loop over passively explaining and moving on:
 
