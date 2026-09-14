@@ -208,7 +208,7 @@ infrastructure until an optional deployment phase is explicitly greenlit.
 - [x] 7. Prompt service (templates, versioning, context assembly, safety wrapping of retrieved text)
 - [x] 8. LLM generation - local provider (`LLMClient` abstraction, `LocalLLMClient` via
       transformers). **Bedrock provider deferred** - see Open Decisions below.
-- [ ] 9. Citations
+- [x] 9. Citations
 - [ ] 10. API
 - [ ] 11. Tests (unit + integration)
 - [ ] 12. Evaluation dataset
@@ -298,4 +298,29 @@ Each step is followed by a Learning Gate (see [`../AGENTS.md`](../AGENTS.md)) be
   reference platform (`agentic-ai-platform`) that `aioboto3` is what real production systems
   reach for once concurrent load makes thread-pool exhaustion an actual bottleneck - a genuine
   data point for when this recommendation would flip if it hadn't already been chosen.
+- **Resolved (Step 9): `Answer.abstained` and `Answer.citations_missing` are two independent
+  booleans, not one collapsed flag.** Reviewer ran the real retriever + prompt + local LLM
+  pipeline against 3 real questions and found the original single-`abstained`-boolean design
+  collapsed three genuinely different outcomes into the same label: true abstention (model
+  correctly said it lacks info), a correct-but-uncited answer (citation-format compliance
+  failure, not a correctness failure), and a hallucination-on-no-context case that also lacked
+  citations. All three produced `abstained=True` for unrelated reasons - fatal for the
+  abstention-accuracy and hallucination-count eval metrics (section 14/15), since a real eval
+  run would show near-100% "abstention" while measuring nothing. Fixed: `abstained` now means
+  only "matched the documented abstention phrase family" (explicit signal);
+  `citations_missing` means "zero valid citations AND no phrase match" (the previously-
+  ambiguous case) - kept as two plain booleans rather than a 3-way enum, since the two
+  conditions are independent checks, not mutually exclusive states.
+- **Open item surfaced by the Step 9 fix-pass re-verification, not yet resolved:**
+  `Qwen/Qwen2.5-0.5B-Instruct` (the local LLM chosen in Step 8) frequently does not reliably
+  follow the exact citation-marker format or abstention phrasing instructed in
+  `prompts/v1.py` - confirmed via real end-to-end runs (correct, grounded answers came back
+  with zero citation markers; a forced-empty-context question got a hallucinated answer instead
+  of the instructed `<no_context>`-triggered abstention). This is a genuine small-model
+  instruction-following limitation, not a bug in the citation/abstention detection logic itself
+  (which now correctly reports these cases via `citations_missing` rather than mislabeling them
+  as `abstained`). Revisit when running the Step 12/13 evaluation dataset: either accept lower
+  citation/abstention compliance rates for the local provider and compare against Bedrock once
+  implemented, or strengthen the prompt (e.g. few-shot examples of the citation format) - do not
+  silently assume the local model matches Bedrock-quality instruction-following.
 - Evaluation dataset format and scoring method for "answer correctness" and "groundedness".

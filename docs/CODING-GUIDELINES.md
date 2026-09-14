@@ -19,6 +19,7 @@ src/
     retrieval/       # Retriever protocol + pgvector implementation
     prompts/         # PromptBuilder protocol + templates, versioning, safety wrapping
     llm/             # LLMClient protocol + Bedrock implementation
+    citations/       # CitationExtractor protocol + regex-based text extractor
     storage/         # SQLAlchemy models, repositories (Document/Chunk persistence)
     evaluation/      # eval dataset loader, runner, metrics
     config.py        # settings (env-driven), one place for tunable params
