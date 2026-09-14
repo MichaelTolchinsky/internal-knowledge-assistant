@@ -14,7 +14,7 @@ src/
   knowledge_assistant/
     api/            # FastAPI routers + Pydantic request/response models
     domain/         # core types: Document, DocumentChunk, RetrievedChunk, Answer, Citation
-    ingestion/       # protocols.py (DocumentParser, Chunker) + parser.py, chunker.py
+    ingestion/       # protocols.py (DocumentParser, Chunker) + parser.py, chunker.py, service.py
     embeddings/      # EmbeddingModel protocol + HF implementation
     retrieval/       # Retriever protocol + pgvector implementation
     prompts/         # PromptBuilder protocol + templates, versioning, safety wrapping
@@ -27,7 +27,7 @@ tests/
   unit/
   integration/
   evaluation/
-seed/                # added later, per handoff spec (not during initial planning)
+seed/                # seed.py CLI (Step 15) - ingests evaluation/seed_docs/ into Postgres
 docker/
   Dockerfile
   docker-compose.yml

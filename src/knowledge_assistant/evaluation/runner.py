@@ -1,21 +1,18 @@
 """Evaluation runner: ingest seed docs (idempotent), run every dataset row through RAGService,
 score with evaluation/metrics.py, and assemble an EvalReport.
 
-No ingestion-service module exists yet (Step 15) - this reuses the same parse -> chunk -> embed
--> persist composition already proven in tests/integration/test_ingestion_flow.py, inline here,
-rather than building new production ingestion code ahead of that step.
+Ingestion itself is not implemented here - it delegates to ingestion/service.py (Step 15),
+shared with the seed CLI (seed/seed.py) and tests/integration/test_ingestion_flow.py, rather
+than maintaining its own copy of the parse -> chunk -> embed -> persist logic.
 """
 
 from __future__ import annotations
 
 import asyncio
-import uuid
 from pathlib import Path
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from knowledge_assistant.config import settings
 from knowledge_assistant.dependencies import (
     get_citation_extractor,
     get_embedding_model,
@@ -30,50 +27,21 @@ from knowledge_assistant.evaluation.dataset_loader import (
     load_dataset,
 )
 from knowledge_assistant.evaluation.report import EvalReport, RowResult, build_report
-from knowledge_assistant.ingestion.chunker import RecursiveCharacterChunker
-from knowledge_assistant.ingestion.parser import get_parser
+from knowledge_assistant.ingestion.service import ingest_directory
 from knowledge_assistant.rag_service import QueryTrace, RAGService
 from knowledge_assistant.retrieval.pgvector import PgVectorRetriever
-from knowledge_assistant.storage.models import DocumentChunkModel, DocumentModel
 
 _DATASET_VERSION = "v1"
 
 
 async def ingest_seed_docs(session: AsyncSession, seed_docs_dir: Path = SEED_DOCS_DIR) -> None:
-    """Parses, chunks, and embeds every markdown file in seed_docs_dir and persists it as a
-    Document + DocumentChunks - idempotent: a doc whose content_hash already exists is skipped
-    entirely (not re-parsed/re-embedded/re-inserted), so running this repeatedly (e.g. once per
-    eval run) never duplicates data or fails on the content_hash unique constraint."""
-    embedder = get_embedding_model()
-    chunker = RecursiveCharacterChunker(settings.chunk_size, settings.chunk_overlap)
-
-    for path in sorted(seed_docs_dir.glob("*.md")):
-        parsed = get_parser(path).parse(path)
-
-        existing = await session.scalar(
-            select(DocumentModel).where(DocumentModel.content_hash == parsed.content_hash)
-        )
-        if existing is not None:
-            continue
-
-        chunk_texts = chunker.chunk(parsed.text)
-        embeddings = await embedder.embed(chunk_texts)
-
-        document = DocumentModel(
-            id=uuid.uuid4(), name=path.name, source=str(path), content_hash=parsed.content_hash
-        )
-        for index, (text, embedding) in enumerate(zip(chunk_texts, embeddings, strict=True)):
-            document.chunks.append(
-                DocumentChunkModel(
-                    id=uuid.uuid4(),
-                    document_id=document.id,
-                    chunk_index=index,
-                    content=text,
-                    embedding=embedding,
-                )
-            )
-        session.add(document)
-
+    """Ingests every supported file in seed_docs_dir - idempotent (a doc whose content_hash
+    already exists is skipped entirely), so running this repeatedly (e.g. once per eval run)
+    never duplicates data or fails on the content_hash unique constraint. Thin wrapper around
+    ingestion/service.py's ingest_directory, kept as a separate name/signature here since
+    existing callers (this module's _main(), tests/integration/test_evaluation_runner.py)
+    already depend on it and don't need ingest_directory's richer return value."""
+    await ingest_directory(seed_docs_dir, session, get_embedding_model())
     await session.commit()
 
 
